@@ -1,10 +1,10 @@
 use std::env;
 
 fn main() {
-    let args : Vec<String> = env::args().collect();
+    let args: Vec<String> = env::args().collect();
 
-    let input : String = args[1..].join(" ");
-    let input : String = [&input, " "].join("");
+    let input: String = args[1..].join(" ");
+    let input: String = [&input, " "].join("");
 
     let mut tokens: Vec<&str> = Vec::new();
 
@@ -20,28 +20,28 @@ fn main() {
                 } else {
                     begin_idx = i + 1;
                 }
-            },
+            }
             '+' => {
                 if is_in_the_middle_of_number {
-                    tokens.push(&input[begin_idx..i]); 
-                    tokens.push("+"); 
+                    tokens.push(&input[begin_idx..i]);
+                    tokens.push("+");
                     begin_idx = i + i;
                     is_in_the_middle_of_number = false;
-                } else{
-                    tokens.push("+"); 
+                } else {
+                    tokens.push("+");
                     begin_idx = i + i;
                 }
-            },
-            '0' ..= '9' => {
+            }
+            '0'..='9' => {
                 if is_in_the_middle_of_number {
-                } else{
+                } else {
                     begin_idx = i;
                     is_in_the_middle_of_number = true;
                 }
-            },
+            }
             _ => {
                 panic!("Cannot tokenize {}", s);
-            },
+            }
         }
     }
 
@@ -49,7 +49,7 @@ fn main() {
     println!("main:");
 
     let mut stack: Vec<&str> = Vec::new();
-    for (i, token) in tokens.iter().enumerate() { 
+    for (i, token) in tokens.iter().enumerate() {
         if i == 0 {
             let num: u32 = match token.parse() {
                 Ok(num) => num,
@@ -62,10 +62,10 @@ fn main() {
         if token == &"+" {
             if stack.is_empty() {
                 stack.push("+");
-            } else{
+            } else {
                 panic!("Expect a number after an operator");
             }
-            continue
+            continue;
         }
 
         let num: u32 = match token.parse() {
