@@ -1,12 +1,22 @@
 use std::env;
 
+enum TokenKind {
+    Num,
+    Operator,
+}
+
+struct Token {
+    kind: TokenKind,
+    val: String,
+}
+
 fn main() {
     let args: Vec<String> = env::args().collect();
 
     let input: String = args[1..].join(" ");
     let input: String = [&input, " "].join("");
 
-    let mut tokens: Vec<&str> = Vec::new();
+    let mut tokens: Vec<Token> = Vec::new();
 
     let mut begin_idx = 0;
     let mut is_in_the_middle_of_number = false;
@@ -14,7 +24,11 @@ fn main() {
         match s {
             ' ' => {
                 if is_in_the_middle_of_number {
-                    tokens.push(&input[begin_idx..i]);
+                    let new_token = Token {
+                        kind: TokenKind::Num,
+                        val: input[begin_idx..i].to_string(),
+                    };
+                    tokens.push(new_token);
                     begin_idx = i + 1;
                     is_in_the_middle_of_number = false;
                 } else {
@@ -23,13 +37,25 @@ fn main() {
             }
             '+' => {
                 if is_in_the_middle_of_number {
-                    tokens.push(&input[begin_idx..i]);
-                    tokens.push("+");
-                    begin_idx = i + i;
+                    let new_token = Token {
+                        kind: TokenKind::Num,
+                        val: input[begin_idx..i].to_string(),
+                    };
+                    tokens.push(new_token);
+                    let new_token = Token {
+                        kind: TokenKind::Operator,
+                        val: String::from("+"),
+                    };
+                    tokens.push(new_token);
+                    begin_idx = i + 1;
                     is_in_the_middle_of_number = false;
                 } else {
-                    tokens.push("+");
-                    begin_idx = i + i;
+                    let new_token = Token {
+                        kind: TokenKind::Operator,
+                        val: String::from("+"),
+                    };
+                    tokens.push(new_token);
+                    begin_idx = i + 1;
                 }
             }
             '0'..='9' => {
@@ -48,41 +74,40 @@ fn main() {
     println!(".global main");
     println!("main:");
 
-    let mut stack: Vec<&str> = Vec::new();
+    let mut stack: Vec<&Token> = Vec::new();
     for (i, token) in tokens.iter().enumerate() {
         if i == 0 {
-            let num: u32 = match token.parse() {
-                Ok(num) => num,
-                Err(_) => panic!("Expect a number in the head"),
-            };
-            println!("\tli a0, {}", num);
-            continue;
-        }
-
-        if token == &"+" {
-            if stack.is_empty() {
-                stack.push("+");
-            } else {
-                panic!("Expect a number after an operator");
+            match token.kind {
+                TokenKind::Num => {
+                    println!("\tli a0, {}", token.val);
+                }
+                TokenKind::Operator => panic!("Expect a number in the head"),
             }
             continue;
         }
 
-        let num: u32 = match token.parse() {
-            Ok(num) => num,
-            Err(_) => panic!("Expect a number after an operator"),
-        };
-
-        let top = match stack.pop() {
-            Some(top) => top,
-            None => panic!("Expect an operator after a number"),
-        };
-
-        if top != "+" {
-            panic!("Expect an operator after a number")
+        match token.kind {
+            TokenKind::Num => {
+                let top = match stack.pop() {
+                    Some(top) => top,
+                    None => panic!("Expect an operator after a number"),
+                };
+                match top.kind {
+                    TokenKind::Num => panic!("Expect an operator after a number"),
+                    TokenKind::Operator => {
+                        println!("\tadd a0, a0, {}", token.val);
+                    }
+                }
+            }
+            TokenKind::Operator => {
+                if stack.is_empty() {
+                    stack.push(&token);
+                } else {
+                    panic!("Expect a number after an operator");
+                }
+                continue;
+            }
         }
-
-        println!("\tadd a0, a0, {}", num);
     }
 
     println!("\tret");
