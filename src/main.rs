@@ -10,12 +10,7 @@ struct Token {
     val: String,
 }
 
-fn main() {
-    let args: Vec<String> = env::args().collect();
-
-    let input: String = args[1..].join(" ");
-    let input: String = [&input, " "].join("");
-
+fn lexing(input: &String) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
 
     let mut begin_idx = 0;
@@ -71,15 +66,20 @@ fn main() {
         }
     }
 
-    println!(".global main");
-    println!("main:");
+    tokens
+}
+
+fn parsing(tokens: &Vec<Token>) -> Vec<String> {
+    let mut commands = Vec::new();
+    commands.push(String::from(".global main"));
+    commands.push(String::from("main:"));
 
     let mut stack: Vec<&Token> = Vec::new();
     for (i, token) in tokens.iter().enumerate() {
         if i == 0 {
             match token.kind {
                 TokenKind::Num => {
-                    println!("\tli a0, {}", token.val);
+                    commands.push(format!("\tli a0, {}", token.val));
                 }
                 TokenKind::Operator => panic!("Expect a number in the head"),
             }
@@ -95,7 +95,7 @@ fn main() {
                 match top.kind {
                     TokenKind::Num => panic!("Expect an operator after a number"),
                     TokenKind::Operator => {
-                        println!("\tadd a0, a0, {}", token.val);
+                        commands.push(format!("\tadd a0, a0, {}", token.val));
                     }
                 }
             }
@@ -110,5 +110,19 @@ fn main() {
         }
     }
 
-    println!("\tret");
+    commands.push(format!("\tret"));
+    commands
+}
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    let input: String = args[1..].join(" ");
+    let input: String = [&input, " "].join("");
+
+    let tokens = lexing(&input);
+    let commands = parsing(&tokens);
+
+    for command in commands.iter() {
+        println!("{}", command);
+    }
 }
