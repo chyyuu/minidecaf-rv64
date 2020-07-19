@@ -1,13 +1,32 @@
 use std::env;
 
 enum TokenKind {
-    Num,
-    Operator,
+    TkNum,
+    TkOperator,
 }
 
 struct Token {
     kind: TokenKind,
     val: String,
+}
+
+enum LetterKind {
+    LtNum,
+    LtSpace,
+    LtOperator,
+    LtParenthesis,
+}
+
+fn return_letter_kind(s: char) -> LetterKind {
+    match s {
+        '0'..='9' => LetterKind::LtNum,
+        ' ' => LetterKind::LtSpace,
+        '+' | '-' => LetterKind::LtOperator,
+        '(' | ')' => LetterKind::LtParenthesis,
+        _ => {
+            panic!("Cannot recognize {}", s);
+        }
+    }
 }
 
 fn lexing(input: &String) -> Vec<Token> {
@@ -16,52 +35,49 @@ fn lexing(input: &String) -> Vec<Token> {
     let mut begin_idx = 0;
     let mut is_in_the_middle_of_number = false;
     for (i, s) in input.chars().enumerate() {
-        match s {
-            ' ' => {
-                if is_in_the_middle_of_number {
-                    let new_token = Token {
-                        kind: TokenKind::Num,
-                        val: input[begin_idx..i].to_string(),
-                    };
-                    tokens.push(new_token);
-                    begin_idx = i + 1;
-                    is_in_the_middle_of_number = false;
-                } else {
-                    begin_idx = i + 1;
-                }
-            }
-            '+' => {
-                if is_in_the_middle_of_number {
-                    let new_token = Token {
-                        kind: TokenKind::Num,
-                        val: input[begin_idx..i].to_string(),
-                    };
-                    tokens.push(new_token);
-                    let new_token = Token {
-                        kind: TokenKind::Operator,
-                        val: String::from("+"),
-                    };
-                    tokens.push(new_token);
-                    begin_idx = i + 1;
-                    is_in_the_middle_of_number = false;
-                } else {
-                    let new_token = Token {
-                        kind: TokenKind::Operator,
-                        val: String::from("+"),
-                    };
-                    tokens.push(new_token);
-                    begin_idx = i + 1;
-                }
-            }
-            '0'..='9' => {
+        match return_letter_kind(s) {
+            LetterKind::LtNum => {
                 if is_in_the_middle_of_number {
                 } else {
                     begin_idx = i;
                     is_in_the_middle_of_number = true;
                 }
             }
-            _ => {
-                panic!("Cannot tokenize {}", s);
+            LetterKind::LtSpace => {
+                if is_in_the_middle_of_number {
+                    let new_token = Token {
+                        kind: TokenKind::TkNum,
+                        val: input[begin_idx..i].to_string(),
+                    };
+                    tokens.push(new_token);
+                    begin_idx = i + 1;
+                    is_in_the_middle_of_number = false;
+                } else {
+                    begin_idx = i + 1;
+                }
+            }
+            LetterKind::LtOperator | LetterKind::LtParenthesis => {
+                if is_in_the_middle_of_number {
+                    let new_token = Token {
+                        kind: TokenKind::TkNum,
+                        val: input[begin_idx..i].to_string(),
+                    };
+                    tokens.push(new_token);
+                    let new_token = Token {
+                        kind: TokenKind::TkOperator,
+                        val: String::from(s.to_string()),
+                    };
+                    tokens.push(new_token);
+                    begin_idx = i + 1;
+                    is_in_the_middle_of_number = false;
+                } else {
+                    let new_token = Token {
+                        kind: TokenKind::TkOperator,
+                        val: String::from(s.to_string()),
+                    };
+                    tokens.push(new_token);
+                    begin_idx = i + 1;
+                }
             }
         }
     }
@@ -78,28 +94,36 @@ fn parsing(tokens: &Vec<Token>) -> Vec<String> {
     for (i, token) in tokens.iter().enumerate() {
         if i == 0 {
             match token.kind {
-                TokenKind::Num => {
+                TokenKind::TkNum => {
                     commands.push(format!("\tli a0, {}", token.val));
                 }
-                TokenKind::Operator => panic!("Expect a number in the head"),
+                TokenKind::TkOperator => panic!("Expect a number in the head"),
             }
             continue;
         }
 
         match token.kind {
-            TokenKind::Num => {
+            TokenKind::TkNum => {
                 let top = match stack.pop() {
                     Some(top) => top,
                     None => panic!("Expect an operator after a number"),
                 };
                 match top.kind {
-                    TokenKind::Num => panic!("Expect an operator after a number"),
-                    TokenKind::Operator => {
-                        commands.push(format!("\tadd a0, a0, {}", token.val));
-                    }
+                    TokenKind::TkNum => panic!("Expect an operator after a number"),
+                    TokenKind::TkOperator => match &top.val[..] {
+                        "+" => {
+                            commands.push(format!("\taddiw a0, a0, {}", token.val));
+                        }
+                        "-" => {
+                            commands.push(format!("\taddiw a0, a0, -{}", token.val));
+                        }
+                        _ => {
+                            panic!("Unexpected operator: {}", token.val);
+                        }
+                    },
                 }
             }
-            TokenKind::Operator => {
+            TokenKind::TkOperator => {
                 if stack.is_empty() {
                     stack.push(&token);
                 } else {
