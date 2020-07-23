@@ -28,6 +28,15 @@ pub fn lexing(input: &String) -> Vec<Token> {
                 }
             }
             LetterKind::LtOperator | LetterKind::LtParenthesis => {
+                let new_tokenkind;
+                match return_letter_kind(s) {
+                    LetterKind::LtParenthesis => {
+                        new_tokenkind = TokenKind::TkParenthesis;
+                    }
+                    _ => {
+                        new_tokenkind = TokenKind::TkOperator;
+                    }
+                }
                 if is_in_the_middle_of_number {
                     let new_token = Token {
                         kind: TokenKind::TkNum,
@@ -35,7 +44,7 @@ pub fn lexing(input: &String) -> Vec<Token> {
                     };
                     tokens.push(new_token);
                     let new_token = Token {
-                        kind: TokenKind::TkOperator,
+                        kind: new_tokenkind,
                         val: String::from(s.to_string()),
                     };
                     tokens.push(new_token);
@@ -43,7 +52,7 @@ pub fn lexing(input: &String) -> Vec<Token> {
                     is_in_the_middle_of_number = false;
                 } else {
                     let new_token = Token {
-                        kind: TokenKind::TkOperator,
+                        kind: new_tokenkind,
                         val: String::from(s.to_string()),
                     };
                     tokens.push(new_token);

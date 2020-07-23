@@ -18,6 +18,7 @@ pub enum LetterKind {
 pub enum TokenKind {
     TkNum,
     TkOperator,
+    TkParenthesis,
 }
 
 pub struct Token {
