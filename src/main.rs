@@ -97,93 +97,81 @@ struct Node {
     right: Option<Box<Node>>,
 }
 
-fn traverse(node: &Node, mid_commands: &mut Vec<String>){
+fn traverse(node: &Node, mid_commands: &mut Vec<String>) {
     match &node.left {
         Some(node_left) => {
             traverse(&node_left, mid_commands);
-        },
-        _ => {},
+        }
+        _ => {}
     }
 
     match &node.right {
         Some(node_right) => {
             traverse(&node_right, mid_commands);
-        },
-        _ => {},
+        }
+        _ => {}
     }
 
     match node.kind {
         NodeKind::NdNum => {
             mid_commands.push(format!("PUSH {}", node.val));
-        },
-        NodeKind::NdOperator => {
-            match &node.val[..] {
-                "+" => {
-                    mid_commands.push(String::from("ADD"));
-                },
-                "-" => {
-                    mid_commands.push(String::from("SUB"));
-                },
-                _ => {
-                    panic!("Unexpected operator: {}", node.val);
-
-                }
+        }
+        NodeKind::NdOperator => match &node.val[..] {
+            "+" => {
+                mid_commands.push(String::from("ADD"));
+            }
+            "-" => {
+                mid_commands.push(String::from("SUB"));
+            }
+            _ => {
+                panic!("Unexpected operator: {}", node.val);
             }
         },
     }
 }
 
 fn generate_intermidiate_code(node: &Option<Node>) -> Vec<String> {
-    let mut mid_commands : Vec<String>= Vec::new();
+    let mut mid_commands: Vec<String> = Vec::new();
     match node {
         Some(node) => {
             traverse(&node, &mut mid_commands);
         }
-        _ => {},
+        _ => {}
     }
     mid_commands
 }
 
 fn create_node(val: &str, kind: NodeKind, left: Option<Node>, right: Option<Node>) -> Option<Node> {
     match (left, right) {
-        (Some(node_left), Some(node_right)) => {
-            Some(Node {
-                    val: String::from(val),
-                    kind: kind,
-                    left: Some(Box::new(node_left)),
-                    right: Some(Box::new(node_right)),
-                }
-            )
-        },
-        (Some(node_left), None) => {
-            Some(Node {
-                val: String::from(val),
-                kind: kind,
-                left: Some(Box::new(node_left)),
-                right: None, 
-            })
-        },
-        (None, Some(node_right)) => {
-            Some( Node {
-                val: String::from(val),
-                kind: kind,
-                left: None,
-                right: Some(Box::new(node_right))
-            })
-        },
-        (None, None) => {
-            Some( Node {
-                val: String::from(val),
-                kind: kind,
-                left: None,
-                right: None
-            })
-        },
+        (Some(node_left), Some(node_right)) => Some(Node {
+            val: String::from(val),
+            kind: kind,
+            left: Some(Box::new(node_left)),
+            right: Some(Box::new(node_right)),
+        }),
+        (Some(node_left), None) => Some(Node {
+            val: String::from(val),
+            kind: kind,
+            left: Some(Box::new(node_left)),
+            right: None,
+        }),
+        (None, Some(node_right)) => Some(Node {
+            val: String::from(val),
+            kind: kind,
+            left: None,
+            right: Some(Box::new(node_right)),
+        }),
+        (None, None) => Some(Node {
+            val: String::from(val),
+            kind: kind,
+            left: None,
+            right: None,
+        }),
     }
 }
 
 fn consume(tokens: &Vec<Token>, idx: &mut usize, target_val: &str) -> bool {
-    let idx_ : usize = *idx;
+    let idx_: usize = *idx;
 
     if tokens.len() <= idx_ {
         return false;
@@ -205,14 +193,14 @@ fn exp(tokens: &Vec<Token>, idx: &mut usize) -> Option<Node> {
             node = create_node(&"+", NodeKind::NdOperator, node, primary(&tokens, idx));
         } else if consume(&tokens, idx, &"-") {
             node = create_node(&"-", NodeKind::NdOperator, node, primary(&tokens, idx));
-        } else{
+        } else {
             return node;
         }
     }
 }
 
 fn primary(tokens: &Vec<Token>, idx: &mut usize) -> Option<Node> {
-    let idx_ : usize = *idx;
+    let idx_: usize = *idx;
     if let TokenKind::TkNum = tokens[idx_].kind {
         *idx += 1;
         return create_node(&tokens[idx_].val, NodeKind::NdNum, None, None);
@@ -221,7 +209,7 @@ fn primary(tokens: &Vec<Token>, idx: &mut usize) -> Option<Node> {
 }
 
 fn parsing(tokens: &Vec<Token>) -> Option<Node> {
-    let mut idx : usize = 0;
+    let mut idx: usize = 0;
     let node = exp(&tokens, &mut idx);
     node
 }
@@ -275,8 +263,7 @@ fn generate_native_code(mid_commands: &Vec<String>) -> Vec<String> {
                 native_commands.push(format!("\tsd t0, -8(sp)"));
                 native_commands.push(format!("\taddi sp, sp, -8"));
             }
-            _ => {
-            },
+            _ => {}
         }
     }
 
