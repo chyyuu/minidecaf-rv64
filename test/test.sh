@@ -28,3 +28,7 @@ assert 1+3+8 12
 assert 4-2 1
 assert 4-18 242
 assert 1+3-2 2 
+assert 1*3+4 7
+assert 3+2*4-1 10
+assert 4/2+2*4/1 10
+assert 1+2*3*4 25

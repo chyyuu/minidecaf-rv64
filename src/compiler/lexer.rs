@@ -60,7 +60,7 @@ fn return_letter_kind(s: char) -> LetterKind {
     match s {
         '0'..='9' => LetterKind::LtNum,
         ' ' => LetterKind::LtSpace,
-        '+' | '-' => LetterKind::LtOperator,
+        '+' | '-' | '*' | '/' => LetterKind::LtOperator,
         '(' | ')' => LetterKind::LtParenthesis,
         _ => {
             panic!("Cannot recognize {}", s);
