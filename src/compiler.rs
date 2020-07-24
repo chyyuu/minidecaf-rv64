@@ -43,6 +43,7 @@ pub enum NodeKind {
     NdNum,
     NdOperator,
     NdComparisonOperator,
+    NdAssignOperator,
     NdVariable,
 }
 

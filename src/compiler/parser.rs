@@ -85,7 +85,12 @@ fn assign(tokens: &Vec<Token>, idx: &mut usize) -> Option<Node> {
     let node = equality(&tokens, idx);
 
     if consume(&tokens, idx, &"=") {
-        return create_node(&"=", NodeKind::NdOperator, node, equality(&tokens, idx));
+        return create_node(
+            &"=",
+            NodeKind::NdAssignOperator,
+            node,
+            equality(&tokens, idx),
+        );
     } else {
         node
     }
