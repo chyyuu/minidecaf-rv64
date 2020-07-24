@@ -3,7 +3,7 @@
 assert() {
     in=$1
     ans=$2
-    cargo run $2 > out/asm.S
+    cargo run -- $1 > out/asm.S
 
     riscv64-unknown-elf-gcc out/asm.S -o out/run
     spike pk out/run
@@ -13,6 +13,7 @@ assert() {
     if [ $res == $ans ]; then
         echo "OK"
     else
+        echo -e "\033[0;31mNG\033[0;39m"
         echo "Result: $res, Ans: $ans"
     fi
 }
@@ -25,7 +26,7 @@ assert 0 0
 assert 10 10
 assert 1+3 4
 assert 1+3+8 12
-assert 4-2 1
+assert 4-2 2
 assert 4-18 242
 assert 1+3-2 2 
 assert 1*3+4 7
@@ -35,3 +36,7 @@ assert 1+2*3*4 25
 assert "3*(2+4)" 18
 assert "1+((2)+4/2)" 5
 assert "(3+4*2)+3*(1+2)-4" 16
+assert "-3" 253
+assert "-3+5" 2
+assert "100+-3*-3" 109
+assert "-2*+8" 240
