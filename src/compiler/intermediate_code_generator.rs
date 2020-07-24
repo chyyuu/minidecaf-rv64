@@ -1,12 +1,14 @@
 use crate::compiler::*;
 
-pub fn generate_intermediate_code(node: &Option<Node>) -> Vec<String> {
+pub fn generate_intermediate_code(ast: &Vec<Option<Node>>) -> Vec<String> {
     let mut mid_commands: Vec<String> = Vec::new();
-    match node {
-        Some(node) => {
-            traverse(&node, &mut mid_commands);
+    for node in ast.iter() {
+        match node {
+            Some(node) => {
+                traverse(&node, &mut mid_commands);
+            }
+            _ => {}
         }
-        _ => {}
     }
     mid_commands
 }
@@ -64,5 +66,8 @@ fn traverse(node: &Node, mid_commands: &mut Vec<String>) {
                 panic!("Unexpected operator: {}", node.val);
             }
         },
+        NodeKind::NdVariable => {
+            mid_commands.push(String::from(format!("LOAD {}", node.val)));
+        }
     }
 }
