@@ -12,19 +12,20 @@ pub enum LetterKind {
     LtNum,
     LtSpace,
     LtOperator,
-    // LtComparisonOperator,
+    LtComparisonOperator,
     LtParenthesis,
 }
 
 pub enum LexerCondition {
     CondCompletion,
     CondMiddleOfNumber,
-    // CondMiddleOfComparisonOperator,
+    CondMiddleOfComparisonOperator,
 }
 
 pub enum TokenKind {
     TkNum,
     TkOperator,
+    TkComparisonOperator,
     TkParenthesis,
 }
 
