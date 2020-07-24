@@ -37,6 +37,7 @@ pub struct Token {
 pub enum NodeKind {
     NdNum,
     NdOperator,
+    NdComparisonOperator,
 }
 
 pub struct Node {
