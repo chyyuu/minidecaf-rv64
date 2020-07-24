@@ -4,29 +4,30 @@ pub fn lexing(input: &String) -> Vec<Token> {
     let mut tokens: Vec<Token> = Vec::new();
 
     let mut begin_idx = 0;
-    let mut is_in_the_middle_of_number = false;
+    let mut condition = LexerCondition::CondCompletion;
     for (i, s) in input.chars().enumerate() {
         match return_letter_kind(s) {
-            LetterKind::LtNum => {
-                if is_in_the_middle_of_number {
-                } else {
+            LetterKind::LtNum => match condition {
+                LexerCondition::CondMiddleOfNumber => {}
+                _ => {
                     begin_idx = i;
-                    is_in_the_middle_of_number = true;
+                    condition = LexerCondition::CondMiddleOfNumber;
                 }
-            }
-            LetterKind::LtSpace => {
-                if is_in_the_middle_of_number {
+            },
+            LetterKind::LtSpace => match condition {
+                LexerCondition::CondMiddleOfNumber => {
                     let new_token = Token {
                         kind: TokenKind::TkNum,
                         val: input[begin_idx..i].to_string(),
                     };
                     tokens.push(new_token);
                     begin_idx = i + 1;
-                    is_in_the_middle_of_number = false;
-                } else {
+                    condition = LexerCondition::CondCompletion;
+                }
+                _ => {
                     begin_idx = i + 1;
                 }
-            }
+            },
             LetterKind::LtOperator | LetterKind::LtParenthesis => {
                 let new_tokenkind;
                 match return_letter_kind(s) {
@@ -37,31 +38,33 @@ pub fn lexing(input: &String) -> Vec<Token> {
                         new_tokenkind = TokenKind::TkOperator;
                     }
                 }
-                if is_in_the_middle_of_number {
-                    let new_token = Token {
-                        kind: TokenKind::TkNum,
-                        val: input[begin_idx..i].to_string(),
-                    };
-                    tokens.push(new_token);
-                    let new_token = Token {
-                        kind: new_tokenkind,
-                        val: String::from(s.to_string()),
-                    };
-                    tokens.push(new_token);
-                    begin_idx = i + 1;
-                    is_in_the_middle_of_number = false;
-                } else {
-                    let new_token = Token {
-                        kind: new_tokenkind,
-                        val: String::from(s.to_string()),
-                    };
-                    tokens.push(new_token);
-                    begin_idx = i + 1;
+                match condition {
+                    LexerCondition::CondMiddleOfNumber => {
+                        let new_token = Token {
+                            kind: TokenKind::TkNum,
+                            val: input[begin_idx..i].to_string(),
+                        };
+                        tokens.push(new_token);
+                        let new_token = Token {
+                            kind: new_tokenkind,
+                            val: String::from(s.to_string()),
+                        };
+                        tokens.push(new_token);
+                        begin_idx = i + 1;
+                        condition = LexerCondition::CondCompletion;
+                    }
+                    _ => {
+                        let new_token = Token {
+                            kind: new_tokenkind,
+                            val: String::from(s.to_string()),
+                        };
+                        tokens.push(new_token);
+                        begin_idx = i + 1;
+                    }
                 }
             }
         }
     }
-
     tokens
 }
 
