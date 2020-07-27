@@ -6,7 +6,7 @@ assert() {
     cargo run -- $1 > out/asm.S
 
     riscv64-unknown-elf-gcc out/asm.S -o out/run
-    spike pk out/run
+    qemu-riscv64 out/run
 
     res=$?
     
