@@ -1,7 +1,7 @@
 [package]
-name = "compiler"
+name = "minidecaf"
 version = "0.1.0"
-authors = ["fukuoka <fukuoka@eidos.ic.i.u-tokyo.ac.jp>"]
+authors = ["chyyuu <yuchen@tsinghua.edu.cn>"]
 edition = "2018"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
