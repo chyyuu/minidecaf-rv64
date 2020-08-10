@@ -10,3 +10,4 @@ test/out
 *.s
 a.out
 tmp
+.vscode
