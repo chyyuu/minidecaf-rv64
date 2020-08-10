@@ -55,6 +55,11 @@ impl Parser {
       TokenType::BNot => Expr::Unary(UnaryOp::BNot, Box::new(self.factor())),
       TokenType::LNot => Expr::Unary(UnaryOp::LNot, Box::new(self.factor())),
       TokenType::Num(val) => Expr::Int(val),
+      TokenType::LeftParen => {
+        let e = self.expr();
+        self.expect(TokenType::RightParen);
+        e
+      }
       _ => self.bad_token("number expected"),
     }
   }
