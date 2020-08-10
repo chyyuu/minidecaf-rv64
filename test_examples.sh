@@ -1,4 +1,4 @@
-for i in ./examples/step[12]/*.c
+for i in ./examples/step[123]/*.c
 do
     riscv64-unknown-elf-gcc $i             #compile with gcc
     qemu-riscv64 ./a.out                 	#run it

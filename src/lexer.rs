@@ -19,6 +19,9 @@ pub enum TokenType {
     Sub,           // -  or Neg
     BNot,          // ~
     LNot,          // !
+    Add,           // +
+    Mul,           // *
+    Div,           // /
     Return,        // "return"
 }
 
@@ -46,6 +49,9 @@ impl TokenType {
             '-' => Some(Sub),
             '~' => Some(BNot),
             '!' => Some(LNot),
+            '+' => Some(Add),
+            '*' => Some(Mul),
+            '/' => Some(Div),
             _ => None,
         }
     }

@@ -20,8 +20,17 @@ pub enum UnaryOp {
   LNot,
 }
 
+#[derive(Debug, Copy, Clone)]
+pub enum BinaryOp {
+  Add,
+  Sub,
+  Mul,
+  Div,
+}
+
 #[derive(Debug, Clone)]
 pub enum Expr {
   Int(i32),
   Unary(UnaryOp, Box<Expr>),
+  Binary(BinaryOp, Box<Expr>, Box<Expr>),
 }

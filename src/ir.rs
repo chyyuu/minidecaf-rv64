@@ -12,6 +12,7 @@ pub struct IrFunc {
 pub enum IrStmt {
   Ldc(i32),
   Unary(UnaryOp),
+  Binary(BinaryOp),
   Ret,
 }
 
@@ -41,6 +42,11 @@ fn expr(stmts: &mut Vec<IrStmt>, e: &Expr) {
     Expr::Unary(op, x) => {
       expr(stmts, x);
       stmts.push(IrStmt::Unary(*op));
+    }
+    Expr::Binary(op, l, r) => {
+      expr(stmts, l);
+      expr(stmts, r);
+      stmts.push(IrStmt::Binary(*op));
     }
   }
 }

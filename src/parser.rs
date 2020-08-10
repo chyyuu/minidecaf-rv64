@@ -38,15 +38,50 @@ impl Parser {
     self.pos += 1;
   }
 
-  fn expr(&mut self) -> Expr {
+  fn consume(&mut self, ty: TokenType) -> bool {
+    let t = &self.tokens[self.pos];
+    if t.ty != ty {
+      return false;
+    }
+    self.pos += 1;
+    true
+  }
+
+  fn factor(&mut self) -> Expr {
     let t = &self.tokens[self.pos];
     self.pos += 1;
     match t.ty {
-      TokenType::Sub => Expr::Unary(UnaryOp::Neg, Box::new(self.expr())),
-      TokenType::BNot => Expr::Unary(UnaryOp::BNot, Box::new(self.expr())),
-      TokenType::LNot => Expr::Unary(UnaryOp::LNot, Box::new(self.expr())),
+      TokenType::Sub => Expr::Unary(UnaryOp::Neg, Box::new(self.factor())),
+      TokenType::BNot => Expr::Unary(UnaryOp::BNot, Box::new(self.factor())),
+      TokenType::LNot => Expr::Unary(UnaryOp::LNot, Box::new(self.factor())),
       TokenType::Num(val) => Expr::Int(val),
       _ => self.bad_token("number expected"),
+    }
+  }
+
+  fn term(&mut self) -> Expr {
+    let mut left = self.factor();
+    loop {
+      if self.consume(TokenType::Mul) {
+        left = Expr::Binary(BinaryOp::Mul, Box::new(left), Box::new(self.factor()));
+      } else if self.consume(TokenType::Div) {
+        left = Expr::Binary(BinaryOp::Div, Box::new(left), Box::new(self.factor()));
+      } else {
+        return left;
+      }
+    }
+  }
+
+  fn expr(&mut self) -> Expr {
+    let mut left = self.term();
+    loop {
+      if self.consume(TokenType::Add) {
+        left = Expr::Binary(BinaryOp::Add, Box::new(left), Box::new(self.term()));
+      } else if self.consume(TokenType::Sub) {
+        left = Expr::Binary(BinaryOp::Sub, Box::new(left), Box::new(self.term()));
+      } else {
+        return left;
+      }
     }
   }
 
