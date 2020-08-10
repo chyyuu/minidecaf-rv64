@@ -47,6 +47,7 @@ impl Parser {
     true
   }
 
+  //<factor> ::= "(" <exp> ")" | <unary_op> <factor> | <int>
   fn factor(&mut self) -> Expr {
     let t = &self.tokens[self.pos];
     self.pos += 1;
@@ -64,6 +65,7 @@ impl Parser {
     }
   }
 
+  //<term> ::= <factor> { ("*" | "/") <factor> }
   fn term(&mut self) -> Expr {
     let mut left = self.factor();
     loop {
@@ -77,13 +79,86 @@ impl Parser {
     }
   }
 
-  fn expr(&mut self) -> Expr {
+  //<addsub-exp> ::= <term> { ("+" | "-") <term> }
+  fn addsub_expr(&mut self) -> Expr {
     let mut left = self.term();
     loop {
       if self.consume(TokenType::Add) {
         left = Expr::Binary(BinaryOp::Add, Box::new(left), Box::new(self.term()));
       } else if self.consume(TokenType::Sub) {
         left = Expr::Binary(BinaryOp::Sub, Box::new(left), Box::new(self.term()));
+      } else {
+        return left;
+      }
+    }
+  }
+
+  //<relational-exp> ::= <addsub_exp> { ("<" | ">" | "<=" | ">=") <additive-exp> }
+  fn relational_expr(&mut self) -> Expr {
+    let mut left = self.addsub_expr();
+    loop {
+      if self.consume(TokenType::Gt) {
+        left = Expr::Binary(BinaryOp::Gt, Box::new(left), Box::new(self.addsub_expr()));
+      } else if self.consume(TokenType::Ge) {
+        left = Expr::Binary(BinaryOp::Ge, Box::new(left), Box::new(self.addsub_expr()));
+      } else if self.consume(TokenType::Lt) {
+        left = Expr::Binary(BinaryOp::Lt, Box::new(left), Box::new(self.addsub_expr()));
+      } else if self.consume(TokenType::Le) {
+        left = Expr::Binary(BinaryOp::Le, Box::new(left), Box::new(self.addsub_expr()));
+      } else {
+        return left;
+      }
+    }
+  }
+
+  //<equality-exp> ::= <relational-exp> { ("!=" | "==") <relational-exp> }
+  fn equality_expr(&mut self) -> Expr {
+    let mut left = self.relational_expr();
+    loop {
+      if self.consume(TokenType::Eq) {
+        left = Expr::Binary(
+          BinaryOp::Eq,
+          Box::new(left),
+          Box::new(self.relational_expr()),
+        );
+      } else if self.consume(TokenType::Ne) {
+        left = Expr::Binary(
+          BinaryOp::Ne,
+          Box::new(left),
+          Box::new(self.relational_expr()),
+        );
+      } else {
+        return left;
+      }
+    }
+  }
+
+  //<logical-and-exp> ::= <equality-exp> { "&&" <equality-exp> }
+  fn logical_and_expr(&mut self) -> Expr {
+    let mut left = self.equality_expr();
+    loop {
+      if self.consume(TokenType::And) {
+        left = Expr::Binary(
+          BinaryOp::And,
+          Box::new(left),
+          Box::new(self.equality_expr()),
+        );
+      } else {
+        return left;
+      }
+    }
+  }
+
+  //<exp> ::= <logical-and-exp> { "||" <logical-and-exp> }
+  fn expr(&mut self) -> Expr {
+    let mut left = self.logical_and_expr();
+    loop {
+      if self.consume(TokenType::Or) {
+        left = Expr::Binary(
+          BinaryOp::Or,
+          Box::new(left),
+          Box::new(self.logical_and_expr()),
+        );
       } else {
         return left;
       }

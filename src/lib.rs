@@ -4,6 +4,9 @@ pub mod ir;
 pub mod lexer;
 pub mod parser;
 
+#[macro_use]
+extern crate lazy_static;
+
 use lexer::tokenize;
 use parser::parsing;
 use std::io::{Result, Write};

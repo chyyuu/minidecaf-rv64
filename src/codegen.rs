@@ -22,8 +22,39 @@ pub fn write_asm(p: &IrProg, w: &mut impl Write) -> Result<()> {
         writeln!(w, "  ld t0, 0(sp)")?; // rhs
         writeln!(w, "  ld t1, 8(sp)")?; // lhs
         writeln!(w, "  add sp, sp, 8")?;
-        let op = match op { Add => "add", Sub => "sub", Mul => "mul", Div => "div" };
-        writeln!(w, "  {} t0, t1, t0", op)?;
+        match op {
+          Add => writeln!(w, "  add t0, t1, t0")?,
+          Sub => writeln!(w, "  sub t0, t1, t0")?,
+          Mul => writeln!(w, "  mul t0, t1, t0")?,
+          Div => writeln!(w, "  div t0, t1, t0")?,
+          Lt => writeln!(w, "  slt t0, t1, t0")?,
+          Le => {
+            writeln!(w, "  slt t0, t0, t1")?;
+            writeln!(w, "  xor t0, t0, 1")?;
+          }
+          Ge => {
+            writeln!(w, "  slt t0, t1, t0")?;
+            writeln!(w, "  xor t0, t0, 1")?;
+          }
+          Gt => writeln!(w, "  slt t0, t0, t1")?,
+          Eq => {
+            writeln!(w, "  xor t0, t0, t1")?;
+            writeln!(w, "  seqz t0, t0")?;
+          }
+          Ne => {
+            writeln!(w, "  xor t0, t0, t1")?;
+            writeln!(w, "  snez t0, t0")?;
+          }
+          And => {
+            writeln!(w, "  snez t0, t0")?;
+            writeln!(w, "  snez t1, t1")?;
+            writeln!(w, "  and t0, t0, t1")?;
+          }
+          Or => {
+            writeln!(w, "  or t0, t0, t1")?;
+            writeln!(w, "  snez t0, t0")?;
+          }
+        };
         writeln!(w, "  sd t0, 0(sp)")?;
       }
       IrStmt::Ret => {

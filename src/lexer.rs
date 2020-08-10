@@ -22,6 +22,14 @@ pub enum TokenType {
     Add,           // +
     Mul,           // *
     Div,           // /
+    Lt,            // <
+    Gt,            // >
+    Le,            // <=
+    Ge,            // >=
+    Eq,            // ==
+    Ne,            // !=
+    And,           // &&
+    Or,            // ||
     Return,        // "return"
 }
 
@@ -52,6 +60,8 @@ impl TokenType {
             '+' => Some(Add),
             '*' => Some(Mul),
             '/' => Some(Div),
+            '<' => Some(Lt),
+            '>' => Some(Gt),
             _ => None,
         }
     }
@@ -128,6 +138,24 @@ struct Symbol {
     ty: TokenType,
 }
 
+impl Symbol {
+    fn new(name: &'static str, ty: TokenType) -> Self {
+        Symbol { name, ty }
+    }
+}
+
+lazy_static! {
+    static ref SYMBOLS: Vec<Symbol> = [
+        Symbol::new("!=", TokenType::Ne),
+        Symbol::new("==", TokenType::Eq),
+        Symbol::new("&&", TokenType::And),
+        Symbol::new("||", TokenType::Or),
+        Symbol::new(">=", TokenType::Ge),
+        Symbol::new("<=", TokenType::Le),
+    ]
+    .to_vec();
+}
+
 // Tokenizer
 struct Tokenizer {
     p: Rc<Vec<char>>, //input
@@ -180,12 +208,30 @@ impl Tokenizer {
     }
 
     fn scan(&mut self, keywords: &HashMap<String, TokenType>) -> Vec<Token> {
-        while let Some(head_char) = self.get_character(0) {
+        'outer: while let Some(head_char) = self.get_character(0) {
             match head_char {
                 CharacterType::NewLine | CharacterType::Whitespace => self.pos += 1,
                 CharacterType::Alphabetic => self.ident(&keywords),
                 CharacterType::Digit => self.number(),
                 CharacterType::NonAlphabetic(c) => {
+                    // Multi-letter symbol
+                    for symbol in SYMBOLS.iter() {
+                        let name = symbol.name;
+                        let len = name.len();
+                        if self.pos + len > self.p.len() {
+                            continue;
+                        }
+
+                        let first = &self.p[self.pos..self.pos + len];
+                        if name != first.iter().collect::<String>() {
+                            continue;
+                        }
+
+                        let t = self.new_token(symbol.ty.clone());
+                        self.pos += len;
+                        self.tokens.push(t);
+                        continue 'outer;
+                    }
                     // Single-letter symbol
                     if let Some(ty) = TokenType::new_single_letter(c) {
                         let t = self.new_token(ty);
