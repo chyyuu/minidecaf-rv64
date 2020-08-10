@@ -11,6 +11,7 @@ pub struct IrFunc {
 
 pub enum IrStmt {
   Ldc(i32),
+  Unary(UnaryOp),
   Ret,
 }
 
@@ -37,5 +38,9 @@ fn func(f: &Func) -> IrFunc {
 fn expr(stmts: &mut Vec<IrStmt>, e: &Expr) {
   match e {
     Expr::Int(x) => stmts.push(IrStmt::Ldc(*x)),
+    Expr::Unary(op, x) => {
+      expr(stmts, x);
+      stmts.push(IrStmt::Unary(*op));
+    }
   }
 }

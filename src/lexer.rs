@@ -16,6 +16,9 @@ pub enum TokenType {
     LeftBrace,     // {
     RightBrace,    // }
     Equal,         // =
+    Sub,           // -  or Neg
+    BNot,          // ~
+    LNot,          // !
     Return,        // "return"
 }
 
@@ -40,6 +43,9 @@ impl TokenType {
             ')' => Some(RightParen),
             '{' => Some(LeftBrace),
             '}' => Some(RightBrace),
+            '-' => Some(Sub),
+            '~' => Some(BNot),
+            '!' => Some(LNot),
             _ => None,
         }
     }

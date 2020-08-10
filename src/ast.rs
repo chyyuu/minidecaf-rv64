@@ -12,7 +12,16 @@ pub struct Func {
 pub enum Stmt {
   Ret(Expr),
 }
+
+#[derive(Debug, Copy, Clone)]
+pub enum UnaryOp {
+  Neg,
+  BNot,
+  LNot,
+}
+
 #[derive(Debug, Clone)]
 pub enum Expr {
   Int(i32),
+  Unary(UnaryOp, Box<Expr>),
 }

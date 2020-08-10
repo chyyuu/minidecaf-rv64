@@ -38,17 +38,16 @@ impl Parser {
     self.pos += 1;
   }
 
-  fn num(&mut self) -> Expr {
+  fn expr(&mut self) -> Expr {
     let t = &self.tokens[self.pos];
     self.pos += 1;
     match t.ty {
+      TokenType::Sub => Expr::Unary(UnaryOp::Neg, Box::new(self.expr())),
+      TokenType::BNot => Expr::Unary(UnaryOp::BNot, Box::new(self.expr())),
+      TokenType::LNot => Expr::Unary(UnaryOp::LNot, Box::new(self.expr())),
       TokenType::Num(val) => Expr::Int(val),
       _ => self.bad_token("number expected"),
     }
-  }
-
-  fn expr(&mut self) -> Expr {
-    self.num()
   }
 
   fn stmt(&mut self) -> Stmt {
