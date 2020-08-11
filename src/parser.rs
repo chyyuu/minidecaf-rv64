@@ -206,6 +206,7 @@ impl Parser {
   // | <exp> ";"
   // | "int" <id> [ = <exp> ] ";"
   // | "if" "(" <exp> ")" <statement> [ "else" <statement> ]
+  // | "{" statements  "}"
   fn stmt(&mut self) -> Stmt {
     let t = &self.tokens[self.pos];
     match t.ty {
@@ -252,6 +253,12 @@ impl Parser {
         } else {
           return Stmt::If(e, Box::new(tst), None);
         }
+      }
+      TokenType::LeftBrace => {
+        self.pos += 1;
+        let sts: Vec<Stmt> = self.stmts();
+        self.expect(TokenType::RightBrace);
+        return Stmt::Block(Block(sts));
       }
       _ => {
         self.bad_token(&format!("stmt() FUN: got {:?} --- ", &t.ty));

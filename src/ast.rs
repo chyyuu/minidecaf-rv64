@@ -14,7 +14,11 @@ pub enum Stmt {
   Def(String, Option<Expr>),
   Expr(Expr),
   If(Expr, Box<Stmt>, Option<Box<Stmt>>),
+  Block(Block),
 }
+
+#[derive(Debug, Clone)]
+pub struct Block(pub Vec<Stmt>);
 
 #[derive(Debug, Copy, Clone)]
 pub enum UnaryOp {

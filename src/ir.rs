@@ -73,6 +73,14 @@ fn func(f: &Func) -> IrFunc {
   }
 }
 
+fn block(ctx: &mut FuncCtx, b: &Block) {
+  ctx.names.push(HashMap::new());
+  for s in &b.0 {
+    stmt(ctx, s);
+  }
+  ctx.names.pop();
+}
+
 fn stmt(ctx: &mut FuncCtx, s: &Stmt) {
   match s {
     Stmt::Ret(e) => {
@@ -111,6 +119,7 @@ fn stmt(ctx: &mut FuncCtx, s: &Stmt) {
       }
       ctx.stmts.push(IrStmt::Label(after_f));
     }
+    Stmt::Block(b) => block(ctx, b),
   }
 }
 
