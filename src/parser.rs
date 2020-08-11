@@ -47,21 +47,23 @@ impl Parser {
     true
   }
 
-  //<factor> ::= "(" <exp> ")" | <unary_op> <factor> | <int>
+  //<factor> ::= "(" <exp> ")" | <unary_op> <factor> | <int> | <id>
   fn factor(&mut self) -> Expr {
     let t = &self.tokens[self.pos];
     self.pos += 1;
-    match t.ty {
+
+    match &t.ty {
       TokenType::Sub => Expr::Unary(UnaryOp::Neg, Box::new(self.factor())),
       TokenType::BNot => Expr::Unary(UnaryOp::BNot, Box::new(self.factor())),
       TokenType::LNot => Expr::Unary(UnaryOp::LNot, Box::new(self.factor())),
-      TokenType::Num(val) => Expr::Int(val),
+      TokenType::Num(val) => Expr::Int(*val),
+      TokenType::Ident(name) => Expr::Var(name.clone()),
       TokenType::LeftParen => {
         let e = self.expr();
         self.expect(TokenType::RightParen);
         e
       }
-      _ => self.bad_token("number expected"),
+      _ => self.bad_token(&format!("number expected, but got {:?}", t.ty)),
     }
   }
 
@@ -149,8 +151,8 @@ impl Parser {
     }
   }
 
-  //<exp> ::= <logical-and-exp> { "||" <logical-and-exp> }
-  fn expr(&mut self) -> Expr {
+  //<logical-or-exp> ::= <logical-and-exp> { "||" <logical-and-exp> }
+  fn logical_or_expr(&mut self) -> Expr {
     let mut left = self.logical_and_expr();
     loop {
       if self.consume(TokenType::Or) {
@@ -161,6 +163,26 @@ impl Parser {
         );
       } else {
         return left;
+      }
+    }
+  }
+
+  //<exp> ::= <id> "=" <exp> | <logical-or-exp>
+  fn expr(&mut self) -> Expr {
+    let t = self.tokens[self.pos].clone();
+    match &t.ty {
+      TokenType::Ident(var) => {
+        let n = self.tokens[self.pos + 1].clone();
+        if n.ty == TokenType::Assign {
+          let nvar = var.clone();
+          self.pos += 2;
+          return Expr::Assign(nvar, Box::new(self.expr()));
+        } else {
+          return self.logical_or_expr();
+        }
+      }
+      _ => {
+        return self.logical_or_expr();
       }
     }
   }
@@ -184,6 +206,12 @@ impl Parser {
           let id = &self.tokens[self.pos];
           if let TokenType::Ident(name) = id.ty.clone() {
             self.pos += 1;
+            let n = &self.tokens[self.pos];
+            if n.ty == TokenType::Semicolon {
+              self.pos += 1;
+              stmts.push(Stmt::Def(name.clone(), None));
+              continue;
+            }
             self.expect(TokenType::Assign);
             let e = self.expr();
             self.expect(TokenType::Semicolon);
@@ -192,10 +220,13 @@ impl Parser {
             self.bad_token("Ident expected");
           }
         }
-        _ => {
+        TokenType::Ident(_) | TokenType::Num(_) => {
           let e = Stmt::Expr(self.expr());
           self.expect(TokenType::Semicolon);
           stmts.push(e);
+        }
+        _ => {
+          self.bad_token("ERROR! stmt expected");
         }
       }
     }
