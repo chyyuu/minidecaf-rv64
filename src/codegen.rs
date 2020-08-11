@@ -2,9 +2,12 @@ use std::io::{Result, Write};
 use crate::{ast::{UnaryOp::*, BinaryOp::*}, ir::*};
 
 pub fn write_asm(p: &IrProg, w: &mut impl Write) -> Result<()> {
+  const SLOT: usize = 8;
   let f = &p.func;
   writeln!(w, ".global {}", f.name)?;
   writeln!(w, "{}:", f.name)?;
+  writeln!(w, "  add sp, sp, -{}", f.var_cnt * SLOT)?;
+  writeln!(w, "  mv s0, sp")?;
   for s in &f.stmts {
     match s {
       IrStmt::Ldc(x) => {
@@ -57,9 +60,20 @@ pub fn write_asm(p: &IrProg, w: &mut impl Write) -> Result<()> {
         };
         writeln!(w, "  sd t0, 0(sp)")?;
       }
+      IrStmt::Load(id) => {
+        writeln!(w, "  ld t0, {}(s0)", id * SLOT)?;
+        writeln!(w, "  sd t0, -8(sp)")?;
+        writeln!(w, "  add sp, sp, -8")?;
+      }
+      IrStmt::Store(id) => {
+        writeln!(w, "  ld t0, 0(sp)")?;
+        writeln!(w, "  add sp, sp, 8")?;
+        writeln!(w, "  sd t0, {}(s0)", id * SLOT)?;
+      }
+      IrStmt::Pop => writeln!(w, "  add sp, sp, 8")?,
       IrStmt::Ret => {
         writeln!(w, "  ld a0, 0(sp)")?;
-        writeln!(w, "  add sp, sp, 8")?;
+        writeln!(w, "  add sp, sp, {}", (f.var_cnt + 1) * SLOT)?;
         writeln!(w, "  ret")?;
       }
     }

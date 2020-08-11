@@ -6,11 +6,13 @@ pub struct Prog {
 #[derive(Debug, Clone)]
 pub struct Func {
   pub name: String,
-  pub stmt: Stmt,
+  pub stmts: Vec<Stmt>,
 }
 #[derive(Debug, Clone)]
 pub enum Stmt {
   Ret(Expr),
+  Def(String, Option<Expr>),
+  Expr(Expr),
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -41,4 +43,6 @@ pub enum Expr {
   Int(i32),
   Unary(UnaryOp, Box<Expr>),
   Binary(BinaryOp, Box<Expr>, Box<Expr>),
+  Var(String),
+  Assign(String, Box<Expr>),
 }

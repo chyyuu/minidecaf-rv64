@@ -33,7 +33,7 @@ impl Parser {
   fn expect(&mut self, ty: TokenType) {
     let t = &self.tokens[self.pos];
     if t.ty != ty {
-      self.bad_token(&format!("{:?} expected", ty));
+      self.bad_token(&format!("{:?} expected, but got {:?}", ty, t.ty));
     }
     self.pos += 1;
   }
@@ -165,16 +165,39 @@ impl Parser {
     }
   }
 
-  fn stmt(&mut self) -> Stmt {
-    let t = &self.tokens[self.pos];
-    self.pos += 1;
-    match t.ty {
-      TokenType::Return => {
-        let e = Stmt::Ret(self.expr());
-        self.expect(TokenType::Semicolon);
-        e
+  fn stmts(&mut self) -> Vec<Stmt> {
+    let mut stmts: Vec<Stmt> = vec![];
+    loop {
+      if self.tokens.len() == self.pos + 1 {
+        return stmts;
       }
-      _ => self.bad_token("number expected"),
+      let t = &self.tokens[self.pos];
+      match t.ty {
+        TokenType::Return => {
+          self.pos += 1;
+          let e = Stmt::Ret(self.expr());
+          self.expect(TokenType::Semicolon);
+          stmts.push(e);
+        }
+        TokenType::Int => {
+          self.pos += 1;
+          let id = &self.tokens[self.pos];
+          if let TokenType::Ident(name) = id.ty.clone() {
+            self.pos += 1;
+            self.expect(TokenType::Assign);
+            let e = self.expr();
+            self.expect(TokenType::Semicolon);
+            stmts.push(Stmt::Def(name.clone(), Some(e)));
+          } else {
+            self.bad_token("Ident expected");
+          }
+        }
+        _ => {
+          let e = Stmt::Expr(self.expr());
+          self.expect(TokenType::Semicolon);
+          stmts.push(e);
+        }
+      }
     }
   }
 
@@ -184,12 +207,12 @@ impl Parser {
     self.expect(TokenType::LeftParen);
     self.expect(TokenType::RightParen);
     self.expect(TokenType::LeftBrace);
-    let body = self.stmt();
+    let body = self.stmts();
     self.expect(TokenType::RightBrace);
 
     Func {
       name: "main".to_string(),
-      stmt: body,
+      stmts: body,
     }
   }
 

@@ -15,7 +15,7 @@ pub enum TokenType {
     RightParen,    // )
     LeftBrace,     // {
     RightBrace,    // }
-    Equal,         // =
+    Assign,        // =
     Sub,           // -  or Neg
     BNot,          // ~
     LNot,          // !
@@ -49,7 +49,7 @@ impl TokenType {
         use self::TokenType::*;
         match c {
             ';' => Some(Semicolon),
-            '=' => Some(Equal),
+            '=' => Some(Assign),
             '(' => Some(LeftParen),
             ')' => Some(RightParen),
             '{' => Some(LeftBrace),
