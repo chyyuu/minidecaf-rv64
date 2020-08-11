@@ -17,6 +17,9 @@ pub enum IrStmt {
   Binary(BinaryOp),
   Load(usize),
   Store(usize),
+  Label(usize),
+  Bz(usize),
+  Jump(usize),
   Pop,
   Ret,
 }
@@ -27,11 +30,21 @@ pub fn ast2ir(p: &Prog) -> IrProg {
   }
 }
 
-struct NameStk(Vec<HashMap<String, usize>>);
+#[derive(Default)]
+struct FuncCtx {
+  names: Vec<HashMap<String, usize>>,
+  stmts: Vec<IrStmt>,
+  var_cnt: usize,
+  label_cnt: usize,
+}
 
-impl NameStk {
+impl FuncCtx {
+  fn new_label(&mut self) -> usize {
+    (self.label_cnt, self.label_cnt += 1).0
+  }
+
   fn lookup(&self, name: String) -> usize {
-    for map in self.0.iter().rev() {
+    for map in self.names.iter().rev() {
       if let Some(x) = map.get(&name) {
         return *x;
       }
@@ -41,68 +54,94 @@ impl NameStk {
 }
 
 fn func(f: &Func) -> IrFunc {
-  let (mut stk, mut var_cnt) = (NameStk(vec![HashMap::new()]), 0);
-  let mut stmts = Vec::new();
+  let mut ctx = FuncCtx::default();
+  ctx.names.push(HashMap::new());
   for s in &f.stmts {
-    match s {
-      Stmt::Ret(e) => {
-        expr(&mut stmts, &stk, e);
-        stmts.push(IrStmt::Ret);
-      }
-      Stmt::Def(name, init) => {
-        if stk
-          .0
-          .last_mut()
-          .unwrap()
-          .insert(name.clone(), var_cnt)
-          .is_some()
-        {
-          panic!("variable `{}` redefined in current context", name)
-        }
-        if let Some(x) = init {
-          expr(&mut stmts, &stk, x);
-          stmts.push(IrStmt::Store(var_cnt));
-        }
-        var_cnt += 1;
-      }
-      Stmt::Expr(e) => {
-        expr(&mut stmts, &stk, e);
-        stmts.push(IrStmt::Pop);
-      }
-    }
+    stmt(&mut ctx, s);
   }
-  match stmts.last() {
+  match ctx.stmts.last() {
     Some(IrStmt::Ret) => {}
     _ => {
-      stmts.push(IrStmt::Ldc(0));
-      stmts.push(IrStmt::Ret);
+      ctx.stmts.push(IrStmt::Ldc(0));
+      ctx.stmts.push(IrStmt::Ret);
     }
   }
   IrFunc {
     name: f.name.clone(),
-    var_cnt,
-    stmts,
+    var_cnt: ctx.var_cnt,
+    stmts: ctx.stmts,
   }
 }
 
-fn expr(stmts: &mut Vec<IrStmt>, stk: &NameStk, e: &Expr) {
+fn stmt(ctx: &mut FuncCtx, s: &Stmt) {
+  match s {
+    Stmt::Ret(e) => {
+      expr(ctx, e);
+      ctx.stmts.push(IrStmt::Ret);
+    }
+    Stmt::Def(name, init) => {
+      if ctx
+        .names
+        .last_mut()
+        .unwrap()
+        .insert(name.clone(), ctx.var_cnt)
+        .is_some()
+      {
+        panic!("variable `{}` redefined in current context", name)
+      }
+      if let Some(x) = init {
+        expr(ctx, x);
+        ctx.stmts.push(IrStmt::Store(ctx.var_cnt));
+      }
+      ctx.var_cnt += 1;
+    }
+    Stmt::Expr(e) => {
+      expr(ctx, e);
+      ctx.stmts.push(IrStmt::Pop);
+    }
+    Stmt::If(cond, t, f) => {
+      expr(ctx, cond);
+      let (before_f, after_f) = (ctx.new_label(), ctx.new_label());
+      ctx.stmts.push(IrStmt::Bz(before_f));
+      stmt(ctx, t);
+      ctx.stmts.push(IrStmt::Jump(after_f));
+      ctx.stmts.push(IrStmt::Label(before_f));
+      if let Some(f) = f {
+        stmt(ctx, f);
+      }
+      ctx.stmts.push(IrStmt::Label(after_f));
+    }
+  }
+}
+
+fn expr(ctx: &mut FuncCtx, e: &Expr) {
   match e {
-    Expr::Int(x) => stmts.push(IrStmt::Ldc(*x)),
+    Expr::Int(x) => ctx.stmts.push(IrStmt::Ldc(*x)),
     Expr::Unary(op, x) => {
-      expr(stmts, stk, x);
-      stmts.push(IrStmt::Unary(*op));
+      expr(ctx, x);
+      ctx.stmts.push(IrStmt::Unary(*op));
     }
     Expr::Binary(op, l, r) => {
-      expr(stmts, stk, l);
-      expr(stmts, stk, r);
-      stmts.push(IrStmt::Binary(*op));
+      expr(ctx, l);
+      expr(ctx, r);
+      ctx.stmts.push(IrStmt::Binary(*op));
     }
-    Expr::Var(name) => stmts.push(IrStmt::Load(stk.lookup(name.to_string()))),
+    Expr::Var(name) => ctx.stmts.push(IrStmt::Load(ctx.lookup(name.clone()))),
     Expr::Assign(name, r) => {
-      expr(stmts, stk, r);
-      let id = stk.lookup(name.to_string());
-      stmts.push(IrStmt::Store(id));
-      stmts.push(IrStmt::Load(id));
+      expr(ctx, r);
+      let id = ctx.lookup(name.clone());
+      ctx.stmts.push(IrStmt::Store(id));
+      ctx.stmts.push(IrStmt::Load(id));
+    }
+    Expr::Condition(cond, t, f) => {
+      expr(ctx, cond);
+      let (before_f, after_f) = (ctx.new_label(), ctx.new_label());
+      ctx.stmts.push(IrStmt::Bz(before_f));
+      expr(ctx, t);
+      ctx.stmts.push(IrStmt::Jump(after_f));
+      ctx.stmts.push(IrStmt::Label(before_f));
+      expr(ctx, f);
+      ctx.stmts.push(IrStmt::Label(after_f));
     }
   }
 }

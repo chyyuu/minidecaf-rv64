@@ -70,6 +70,13 @@ pub fn write_asm(p: &IrProg, w: &mut impl Write) -> Result<()> {
         writeln!(w, "  add sp, sp, 8")?;
         writeln!(w, "  sd t0, {}(s0)", id * SLOT)?;
       }
+      IrStmt::Label(x) => writeln!(w, ".L.{}.{}:", f.name, x)?,
+      IrStmt::Bz(x) => {
+        writeln!(w, "  ld t0, 0(sp)")?;
+        writeln!(w, "  add sp, sp, 8")?;
+        writeln!(w, "  beqz t0, .L.{}.{}", f.name, x)?;
+      }
+      IrStmt::Jump(x) => writeln!(w, "  j .L.{}.{}", f.name, x)?,
       IrStmt::Pop => writeln!(w, "  add sp, sp, 8")?,
       IrStmt::Ret => {
         writeln!(w, "  ld a0, 0(sp)")?;

@@ -187,51 +187,75 @@ impl Parser {
     }
   }
 
+  // <statement> ::= "return" <exp> ";"
+  // | <exp> ";"
+  // | "int" <id> [ = <exp> ] ";"
+  // | "if" "(" <exp> ")" <statement> [ "else" <statement> ]
+  fn stmt(&mut self) -> Stmt {
+    let t = &self.tokens[self.pos];
+    match t.ty {
+      TokenType::Return => {
+        self.pos += 1;
+        let e = Stmt::Ret(self.expr());
+        self.expect(TokenType::Semicolon);
+        return e;
+      }
+      TokenType::Int => {
+        self.pos += 1;
+        let id = &self.tokens[self.pos];
+        if let TokenType::Ident(name) = id.ty.clone() {
+          self.pos += 1;
+          let n = &self.tokens[self.pos];
+          if n.ty == TokenType::Semicolon {
+            self.pos += 1;
+            return Stmt::Def(name.clone(), None);
+          }
+          self.expect(TokenType::Assign);
+          let e = self.expr();
+          self.expect(TokenType::Semicolon);
+          return Stmt::Def(name.clone(), Some(e));
+        } else {
+          self.bad_token("Ident expected");
+        }
+      }
+      TokenType::Ident(_) | TokenType::Num(_) => {
+        let e = Stmt::Expr(self.expr());
+        self.expect(TokenType::Semicolon);
+        return e;
+      }
+      TokenType::If => {
+        self.pos += 1;
+        self.expect(TokenType::LeftParen);
+        let e = self.expr();
+        self.expect(TokenType::RightParen);
+        let tst = self.stmt();
+        let n = &self.tokens[self.pos];
+        if n.ty == TokenType::Else {
+          let fst = self.stmt();
+          return Stmt::If(e, Box::new(tst), Some(Box::new(fst)));
+        } else {
+          return Stmt::If(e, Box::new(tst), None);
+        }
+      }
+      _ => {
+        self.bad_token("ERROR! stmt expected");
+      }
+    }
+  }
+
+  //statements ::= { <statement> }
   fn stmts(&mut self) -> Vec<Stmt> {
     let mut stmts: Vec<Stmt> = vec![];
     loop {
       if self.tokens.len() == self.pos + 1 {
         return stmts;
-      }
-      let t = &self.tokens[self.pos];
-      match t.ty {
-        TokenType::Return => {
-          self.pos += 1;
-          let e = Stmt::Ret(self.expr());
-          self.expect(TokenType::Semicolon);
-          stmts.push(e);
-        }
-        TokenType::Int => {
-          self.pos += 1;
-          let id = &self.tokens[self.pos];
-          if let TokenType::Ident(name) = id.ty.clone() {
-            self.pos += 1;
-            let n = &self.tokens[self.pos];
-            if n.ty == TokenType::Semicolon {
-              self.pos += 1;
-              stmts.push(Stmt::Def(name.clone(), None));
-              continue;
-            }
-            self.expect(TokenType::Assign);
-            let e = self.expr();
-            self.expect(TokenType::Semicolon);
-            stmts.push(Stmt::Def(name.clone(), Some(e)));
-          } else {
-            self.bad_token("Ident expected");
-          }
-        }
-        TokenType::Ident(_) | TokenType::Num(_) => {
-          let e = Stmt::Expr(self.expr());
-          self.expect(TokenType::Semicolon);
-          stmts.push(e);
-        }
-        _ => {
-          self.bad_token("ERROR! stmt expected");
-        }
+      } else {
+        stmts.push(self.stmt());
       }
     }
   }
 
+  //<function> ::= "int" <id> "(" ")" "{" <statements> "}"
   fn func(&mut self) -> Func {
     self.expect(TokenType::Int);
     self.expect(TokenType::Ident("main".to_string()));

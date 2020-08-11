@@ -13,6 +13,7 @@ pub enum Stmt {
   Ret(Expr),
   Def(String, Option<Expr>),
   Expr(Expr),
+  If(Expr, Box<Stmt>, Option<Box<Stmt>>),
 }
 
 #[derive(Debug, Copy, Clone)]
@@ -45,4 +46,5 @@ pub enum Expr {
   Binary(BinaryOp, Box<Expr>, Box<Expr>),
   Var(String),
   Assign(String, Box<Expr>),
+  Condition(Box<Expr>, Box<Expr>, Box<Expr>),
 }
