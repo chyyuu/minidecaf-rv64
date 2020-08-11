@@ -167,7 +167,22 @@ impl Parser {
     }
   }
 
-  //<exp> ::= <id> "=" <exp> | <logical-or-exp>
+  //<conditional-exp> ::= <logical-or-exp> [ "?" <exp> ":" <conditional-exp> ]
+  fn conditional_expr(&mut self) -> Expr {
+    let lor = self.logical_or_expr();
+    let t = self.tokens[self.pos].clone();
+    if t.ty == TokenType::Question {
+      self.pos += 1;
+      let e = self.expr();
+      self.expect(TokenType::Colon);
+      let ne = self.conditional_expr();
+      return Expr::Condition(Box::new(lor), Box::new(e), Box::new(ne));
+    } else {
+      return lor;
+    }
+  }
+
+  //<exp> ::= <id> "=" <exp> |  <conditional-exp>
   fn expr(&mut self) -> Expr {
     let t = self.tokens[self.pos].clone();
     match &t.ty {
@@ -178,11 +193,11 @@ impl Parser {
           self.pos += 2;
           return Expr::Assign(nvar, Box::new(self.expr()));
         } else {
-          return self.logical_or_expr();
+          return self.conditional_expr();
         }
       }
       _ => {
-        return self.logical_or_expr();
+        return self.conditional_expr();
       }
     }
   }
@@ -231,6 +246,7 @@ impl Parser {
         let tst = self.stmt();
         let n = &self.tokens[self.pos];
         if n.ty == TokenType::Else {
+          self.pos += 1;
           let fst = self.stmt();
           return Stmt::If(e, Box::new(tst), Some(Box::new(fst)));
         } else {
@@ -238,7 +254,7 @@ impl Parser {
         }
       }
       _ => {
-        self.bad_token("ERROR! stmt expected");
+        self.bad_token(&format!("stmt() FUN: got {:?} --- ", &t.ty));
       }
     }
   }
