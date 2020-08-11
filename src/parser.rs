@@ -256,8 +256,16 @@ impl Parser {
       }
       TokenType::LeftBrace => {
         self.pos += 1;
-        let sts: Vec<Stmt> = self.stmts();
-        self.expect(TokenType::RightBrace);
+        let mut sts: Vec<Stmt> = vec![];
+        loop {
+          let t = &self.tokens[self.pos];
+          if t.ty == TokenType::RightBrace {
+            self.pos += 1;
+            break;
+          } else {
+            sts.push(self.stmt());
+          }
+        }
         return Stmt::Block(Block(sts));
       }
       _ => {
@@ -266,7 +274,7 @@ impl Parser {
     }
   }
 
-  //statements ::= { <statement> }
+  //statements ::= { <statement> } ONLY for function
   fn stmts(&mut self) -> Vec<Stmt> {
     let mut stmts: Vec<Stmt> = vec![];
     loop {
