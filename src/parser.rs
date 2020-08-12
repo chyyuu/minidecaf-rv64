@@ -3,18 +3,18 @@ use crate::lexer::{Token, TokenType};
 
 pub fn parsing(tokens: &Vec<Token>) -> Prog {
   let mut parser = Parser::new(tokens.to_vec());
-  parser.prog();
-  if let Some(prog) = parser.prog {
-    return prog;
-  } else {
-    panic!("Error in parsing");
-  }
+  return parser.prog();
+  // if let Some(prog) = parser.prog {
+  //   return prog;
+  // } else {
+  //   panic!("Error in parsing");
+  // }
 }
 
 pub struct Parser {
   tokens: Vec<Token>,
   pos: usize,
-  prog: Option<Prog>,
+  //prog: Option<Prog>,
 }
 
 impl Parser {
@@ -22,7 +22,7 @@ impl Parser {
     Parser {
       tokens,
       pos: 0,
-      prog: None,
+      //prog: None,
     }
   }
 
@@ -387,92 +387,123 @@ impl Parser {
   }
 
   //<function> ::= "int" <id> "(" [ "int" <id> { "," "int" <id> } ] ")" ( "{" { <block-item> } "}" | ";" )
-  fn func(&mut self) -> Func {
-    self.expect(TokenType::Int);
-    let t = &self.tokens[self.pos].clone();
-    let fname;
-    match &t.ty {
-      TokenType::Ident(name) => {
-        self.pos += 1;
-        fname = name;
-      }
-      _ => {
-        self.bad_token(&format!("func(): got {:?} --- ", &t.ty));
-      }
-    }
-
-    self.expect(TokenType::LeftParen);
-
-    let mut params = vec![];
-
-    let nt = &self.tokens[self.pos];
-    if nt.ty != TokenType::RightParen {
-      loop {
-        let lt = &self.tokens[self.pos].clone();
-        if lt.ty == TokenType::Int {
-          self.pos += 1;
-          let idt = self.tokens[self.pos].clone();
-          match &idt.ty {
-            TokenType::Ident(param) => {
-              self.pos += 1;
-              params.push(param.clone());
-            }
-            _ => {
-              self.bad_token(&format!("func(): expect Ident, got {:?} --- ", &idt.ty));
-            }
-          }
-          let xt = &self.tokens[self.pos];
-          if xt.ty != TokenType::Comma {
-            break;
-          } else {
-            self.pos += 1;
-          }
-        } else {
-          self.bad_token(&format!("func(): expect Int, got {:?} --- ", &lt.ty));
-        }
-      }
-    }
-    self.expect(TokenType::RightParen);
-
-    // body;
-    let mut sts: Vec<Stmt> = vec![];
-    let snt = &self.tokens[self.pos];
-    if snt.ty != TokenType::Semicolon {
-      self.expect(TokenType::LeftBrace);
-
-      loop {
-        let t = &self.tokens[self.pos];
-        if t.ty == TokenType::RightBrace {
-          self.pos += 1;
-          break;
-        } else {
-          sts.push(self.stmt());
-        }
-      }
-      Func {
-        name: fname.clone(),
-        params,
-        stmts: Some(Stmt::Block(Block(sts))),
-      }
-    } else {
-      self.pos += 1;
-      Func {
-        name: fname.clone(),
-        params,
-        stmts: None,
-      }
-    }
-  }
-
-  //fn prog(&mut self) -> Option<Prog> {
-
-  fn prog(&mut self) {
-    // Function
+  fn toplevel(&mut self) -> Prog {
     let mut funcs = vec![];
+    let mut globs = vec![];
     while self.tokens.len() > self.pos {
-      funcs.push(self.func());
-    }
-    self.prog = Some(Prog { funcs });
-    //   self.prog
+      let t0 = &self.tokens[self.pos].clone();
+      // let t1 = &self.tokens[self.pos + 1].clone();
+      let t2 = &self.tokens[self.pos + 2].clone();
+      if t0.ty != TokenType::Int {
+        self.bad_token(&format!("toplevel(): expect Int, got {:?} --- ", &t0.ty));
+      }
+      //function
+      if t2.ty == TokenType::LeftParen {
+        self.expect(TokenType::Int);
+        let t = &self.tokens[self.pos].clone();
+        let fname;
+        match &t.ty {
+          TokenType::Ident(name) => {
+            self.pos += 1;
+            fname = name;
+          }
+          _ => {
+            self.bad_token(&format!("func(): got {:?} --- ", &t.ty));
+          }
+        }
+
+        self.expect(TokenType::LeftParen);
+
+        let mut params = vec![];
+
+        let nt = &self.tokens[self.pos];
+        if nt.ty != TokenType::RightParen {
+          loop {
+            let lt = &self.tokens[self.pos].clone();
+            if lt.ty == TokenType::Int {
+              self.pos += 1;
+              let idt = self.tokens[self.pos].clone();
+              match &idt.ty {
+                TokenType::Ident(param) => {
+                  self.pos += 1;
+                  params.push(param.clone());
+                }
+                _ => {
+                  self.bad_token(&format!("func(): expect Ident, got {:?} --- ", &idt.ty));
+                }
+              }
+              let xt = &self.tokens[self.pos];
+              if xt.ty != TokenType::Comma {
+                break;
+              } else {
+                self.pos += 1;
+              }
+            } else {
+              self.bad_token(&format!("func(): expect Int, got {:?} --- ", &lt.ty));
+            }
+          }
+        }
+        self.expect(TokenType::RightParen);
+
+        // body;
+        let mut sts: Vec<Stmt> = vec![];
+        let snt = &self.tokens[self.pos];
+        if snt.ty != TokenType::Semicolon {
+          self.expect(TokenType::LeftBrace);
+
+          loop {
+            let t = &self.tokens[self.pos];
+            if t.ty == TokenType::RightBrace {
+              self.pos += 1;
+              break;
+            } else {
+              sts.push(self.stmt());
+            }
+          }
+          funcs.push(Func {
+            name: fname.clone(),
+            params,
+            stmts: Some(Stmt::Block(Block(sts))),
+          });
+        } else {
+          self.pos += 1;
+          funcs.push(Func {
+            name: fname.clone(),
+            params,
+            stmts: None,
+          });
+        }
+      } else {
+        //function
+
+        //global vars
+        self.expect(TokenType::Int);
+        let id = &self.tokens[self.pos];
+        if let TokenType::Ident(name) = id.ty.clone() {
+          self.pos += 1;
+          let n = &self.tokens[self.pos];
+          if n.ty == TokenType::Semicolon {
+            self.pos += 1;
+            globs.push((name.clone(), None));
+          }
+          self.expect(TokenType::Assign);
+          let nid = &self.tokens[self.pos];
+          if let TokenType::Num(num) = nid.ty {
+            self.expect(TokenType::Semicolon);
+            globs.push((name.clone(), Some(num)));
+          } else {
+            self.bad_token(&format!("func(): expect Num, got {:?} --- ", &nid.ty));
+          }
+        } else {
+          self.bad_token("Ident expected");
+        }
+      }
+    } //while
+    return Prog { funcs, globs };
+  }
+  //return Prog(Funs, Globals)
+  // <program> ::= { <function> | <declaration> }
+  fn prog(&mut self) -> Prog {
+    return self.toplevel();
   }
 }

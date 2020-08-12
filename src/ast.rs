@@ -1,6 +1,7 @@
 #[derive(Debug, Clone)]
 pub struct Prog {
   pub funcs: Vec<Func>,
+  pub globs: Vec<(String, Option<i32>)>,
 }
 
 #[derive(Debug, Clone)]

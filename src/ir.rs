@@ -3,6 +3,7 @@ use std::collections::{hash_map::Entry, HashMap};
 
 pub struct IrProg {
   pub funcs: Vec<IrFunc>,
+  pub globs: Vec<(String, Option<i32>)>,
 }
 
 pub struct IrFunc {
@@ -19,6 +20,8 @@ pub enum IrStmt {
   Binary(BinaryOp),
   Load(usize),
   Store(usize),
+  LoadGlobal(usize),
+  StoreGlobal(usize),
   Label(usize),
   Bz(usize),
   Bnz(usize),
@@ -29,25 +32,43 @@ pub enum IrStmt {
 }
 
 pub fn ast2ir(p: &Prog) -> IrProg {
+  let mut glob2id = HashMap::new();
+  let mut globs = Vec::new();
+  for g in &p.globs {
+    match glob2id.entry(g.0.clone()) {
+      Entry::Vacant(v) => {
+        v.insert(globs.len());
+        globs.push(g.clone());
+      }
+      Entry::Occupied(o) => {
+        let old = &mut globs[*o.get()];
+        if old.1.is_none() {
+          *old = g.clone();
+        } else if g.1.is_some() {
+          panic!("global variable `{}` redefined in current context", g.0)
+        }
+      }
+    }
+  }
   let mut func2id = HashMap::new();
   let mut funcs = Vec::new();
   for f in &p.funcs {
     match func2id.entry(f.name.clone()) {
       Entry::Vacant(v) => {
         v.insert(funcs.len());
-        funcs.push(func(&func2id, f));
+        funcs.push(func(&func2id, &glob2id, f));
       }
       Entry::Occupied(o) => {
         let old = &mut funcs[*o.get()];
         if old.is_decl {
-          *old = func(&func2id, f);
+          *old = func(&func2id, &glob2id, f);
         } else if f.stmts.is_some() {
           panic!("function `{}` redefined in current context", f.name)
         }
       }
     }
   }
-  IrProg { funcs }
+  IrProg { funcs, globs }
 }
 
 struct FuncCtx<'a> {
@@ -55,6 +76,7 @@ struct FuncCtx<'a> {
   stmts: Vec<IrStmt>,
   loops: Vec<(usize, usize)>,
   func2id: &'a HashMap<String, usize>,
+  glob2id: &'a HashMap<String, usize>,
   var_cnt: usize,
   label_cnt: usize,
 }
@@ -64,22 +86,26 @@ impl<'a> FuncCtx<'a> {
     (self.label_cnt, self.label_cnt += 1).0
   }
 
-  fn lookup(&self, name: String) -> usize {
+  fn lookup(&self, name: String) -> (bool, usize) {
     for map in self.names.iter().rev() {
       if let Some(x) = map.get(&name) {
-        return *x;
+        return (false, *x);
       }
+    }
+    if let Some(x) = self.glob2id.get(&name) {
+      return (true, *x);
     }
     panic!("variable `{}` not defined in current context", name)
   }
 }
 
-fn func(func2id: &HashMap<String, usize>, f: &Func) -> IrFunc {
+fn func(func2id: &HashMap<String, usize>, glob2id: &HashMap<String, usize>, f: &Func) -> IrFunc {
   let mut ctx = FuncCtx {
     names: vec![HashMap::new()],
     stmts: Vec::new(),
     loops: Vec::new(),
     func2id,
+    glob2id,
     var_cnt: 0,
     label_cnt: 0,
   };
@@ -236,12 +262,27 @@ fn expr<'a>(ctx: &mut FuncCtx<'a>, e: &Expr) {
       expr(ctx, r);
       ctx.stmts.push(IrStmt::Binary(*op));
     }
-    Expr::Var(name) => ctx.stmts.push(IrStmt::Load(ctx.lookup(name.clone()))),
+    Expr::Var(name) => {
+      let (is_glob, id) = ctx.lookup(name.clone());
+      ctx.stmts.push(if is_glob {
+        IrStmt::LoadGlobal(id)
+      } else {
+        IrStmt::Load(id)
+      });
+    }
     Expr::Assign(name, r) => {
       expr(ctx, r);
-      let id = ctx.lookup(name.clone());
-      ctx.stmts.push(IrStmt::Store(id));
-      ctx.stmts.push(IrStmt::Load(id));
+      let (is_glob, id) = ctx.lookup(name.clone());
+      ctx.stmts.push(if is_glob {
+        IrStmt::StoreGlobal(id)
+      } else {
+        IrStmt::Store(id)
+      });
+      ctx.stmts.push(if is_glob {
+        IrStmt::LoadGlobal(id)
+      } else {
+        IrStmt::Load(id)
+      });
     }
     Expr::Condition(cond, t, f) => {
       expr(ctx, cond);
