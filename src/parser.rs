@@ -74,6 +74,8 @@ impl Parser {
               let nt = &self.tokens[self.pos];
               if nt.ty != TokenType::Comma {
                 break;
+              } else {
+                self.pos += 1;
               }
             }
             // self.expect(TokenType::RightParen);
@@ -384,18 +386,6 @@ impl Parser {
     }
   }
 
-  // //statements ::= { <statement> } ONLY for function
-  // fn stmts(&mut self) -> Vec<Stmt> {
-  //   let mut stmts: Vec<Stmt> = vec![];
-  //   loop {
-  //     if self.tokens.len() == self.pos + 1 {
-  //       return stmts;
-  //     } else {
-  //       stmts.push(self.stmt());
-  //     }
-  //   }
-  // }
-
   //<function> ::= "int" <id> "(" [ "int" <id> { "," "int" <id> } ] ")" ( "{" { <block-item> } "}" | ";" )
   fn func(&mut self) -> Func {
     self.expect(TokenType::Int);
@@ -418,7 +408,9 @@ impl Parser {
     let nt = &self.tokens[self.pos];
     if nt.ty != TokenType::RightParen {
       loop {
-        if self.consume(TokenType::Int) {
+        let lt = &self.tokens[self.pos].clone();
+        if lt.ty == TokenType::Int {
+          self.pos += 1;
           let idt = self.tokens[self.pos].clone();
           match &idt.ty {
             TokenType::Ident(param) => {
@@ -426,19 +418,23 @@ impl Parser {
               params.push(param.clone());
             }
             _ => {
-              self.bad_token(&format!("func(): expect Ident, got {:?} --- ", &t.ty));
+              self.bad_token(&format!("func(): expect Ident, got {:?} --- ", &idt.ty));
             }
           }
-          let nt = &self.tokens[self.pos];
-          if nt.ty != TokenType::Comma {
+          let xt = &self.tokens[self.pos];
+          if xt.ty != TokenType::Comma {
             break;
+          } else {
+            self.pos += 1;
           }
+        } else {
+          self.bad_token(&format!("func(): expect Int, got {:?} --- ", &lt.ty));
         }
       }
     }
     self.expect(TokenType::RightParen);
 
-    // let body;
+    // body;
     let mut sts: Vec<Stmt> = vec![];
     let snt = &self.tokens[self.pos];
     if snt.ty != TokenType::Semicolon {
