@@ -86,15 +86,26 @@ fn func(func2id: &HashMap<String, usize>, f: &Func) -> IrFunc {
   for p in &f.params {
     stmt(&mut ctx, &Stmt::Def(p.to_string(), None))
   }
-  if let Some(stmts) = &f.stmts {
-    for s in stmts {
-      stmt(&mut ctx, s);
-    }
-    match ctx.stmts.last() {
-      Some(IrStmt::Ret) => {}
-      _ => {
-        ctx.stmts.push(IrStmt::Ldc(0));
-        ctx.stmts.push(IrStmt::Ret);
+  if let Some(st) = &f.stmts {
+    if let Stmt::Block(Block(stmts)) = st {
+      for s in stmts {
+        stmt(&mut ctx, s);
+      }
+      match ctx.stmts.last() {
+        Some(IrStmt::Ret) => {}
+        _ => {
+          ctx.stmts.push(IrStmt::Ldc(0));
+          ctx.stmts.push(IrStmt::Ret);
+        }
+      }
+    } else {
+      stmt(&mut ctx, st);
+      match ctx.stmts.last() {
+        Some(IrStmt::Ret) => {}
+        _ => {
+          ctx.stmts.push(IrStmt::Ldc(0));
+          ctx.stmts.push(IrStmt::Ret);
+        }
       }
     }
   }

@@ -357,17 +357,17 @@ impl Parser {
     }
   }
 
-  //statements ::= { <statement> } ONLY for function
-  fn stmts(&mut self) -> Vec<Stmt> {
-    let mut stmts: Vec<Stmt> = vec![];
-    loop {
-      if self.tokens.len() == self.pos + 1 {
-        return stmts;
-      } else {
-        stmts.push(self.stmt());
-      }
-    }
-  }
+  // //statements ::= { <statement> } ONLY for function
+  // fn stmts(&mut self) -> Vec<Stmt> {
+  //   let mut stmts: Vec<Stmt> = vec![];
+  //   loop {
+  //     if self.tokens.len() == self.pos + 1 {
+  //       return stmts;
+  //     } else {
+  //       stmts.push(self.stmt());
+  //     }
+  //   }
+  // }
 
   //<function> ::= "int" <id> "(" [ "int" <id> { "," "int" <id> } ] ")" ( "{" { <block-item> } "}" | ";" )
   fn func(&mut self) -> Func {
@@ -415,7 +415,7 @@ impl Parser {
     let snt = &self.tokens[self.pos];
     if snt.ty != TokenType::Semicolon {
       self.expect(TokenType::LeftBrace);
-      body = Some(self.stmts());
+      body = Some(self.stmt());
       self.expect(TokenType::RightBrace);
     } else {
       body = None;

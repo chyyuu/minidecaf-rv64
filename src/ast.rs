@@ -7,7 +7,7 @@ pub struct Prog {
 pub struct Func {
   pub name: String,
   pub params: Vec<String>,
-  pub stmts: Option<Vec<Stmt>>,
+  pub stmts: Option<Stmt>,
 }
 #[derive(Debug, Clone)]
 pub enum Stmt {
