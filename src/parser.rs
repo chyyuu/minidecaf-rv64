@@ -372,7 +372,6 @@ impl Parser {
   //<function> ::= "int" <id> "(" [ "int" <id> { "," "int" <id> } ] ")" ( "{" { <block-item> } "}" | ";" )
   fn func(&mut self) -> Func {
     self.expect(TokenType::Int);
-    self.expect(TokenType::Ident("main".to_string()));
     let t = &self.tokens[self.pos].clone();
     let fname;
     match &t.ty {
