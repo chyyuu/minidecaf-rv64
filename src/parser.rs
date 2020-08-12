@@ -411,21 +411,32 @@ impl Parser {
     }
     self.expect(TokenType::RightParen);
 
-    let body;
+    // let body;
+    let mut sts: Vec<Stmt> = vec![];
     let snt = &self.tokens[self.pos];
     if snt.ty != TokenType::Semicolon {
       self.expect(TokenType::LeftBrace);
-      body = Some(self.stmt());
-      self.expect(TokenType::RightBrace);
+
+      loop {
+        let t = &self.tokens[self.pos];
+        if t.ty == TokenType::RightBrace {
+          self.pos += 1;
+          break;
+        } else {
+          sts.push(self.stmt());
+        }
+      }
+    // body = Some(self.stmt());
+    // self.expect(TokenType::RightBrace);
     } else {
-      body = None;
+      // body = None;
       self.pos += 1;
     }
 
     Func {
       name: fname.clone(),
       params,
-      stmts: body,
+      stmts: Some(Stmt::Block(Block(sts))),
     }
   }
 
