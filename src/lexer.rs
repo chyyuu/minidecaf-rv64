@@ -41,6 +41,7 @@ pub enum TokenType {
     Do,            // "do"
     Break,         // "break"
     Continue,      // "continue"
+    Comma,         // ","
 }
 
 // Character Kind
@@ -75,6 +76,7 @@ impl TokenType {
             '?' => Some(Question),
             ':' => Some(Colon),
             '%' => Some(Mod),
+            ',' => Some(Comma),
             _ => None,
         }
     }

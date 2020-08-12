@@ -3,11 +3,14 @@ use crate::{ast::{UnaryOp::*, BinaryOp::*}, ir::*};
 
 pub fn write_asm(p: &IrProg, w: &mut impl Write) -> Result<()> {
   const SLOT: usize = 8;
-  let f = &p.func;
-  writeln!(w, ".global {}", f.name)?;
-  writeln!(w, "{}:", f.name)?;
-  writeln!(w, "  add sp, sp, -{}", f.var_cnt * SLOT)?;
-  writeln!(w, "  mv s0, sp")?;
+  for f in &p.funcs {
+    if f.is_decl { continue; }
+    writeln!(w, ".global {}", f.name)?;
+    writeln!(w, "{}:", f.name)?;
+    writeln!(w, "  sd s0, -{}(sp)", (f.var_cnt + 1) * SLOT)?;
+    writeln!(w, "  sd ra, -{}(sp)", (f.var_cnt + 2) * SLOT)?;
+    writeln!(w, "  add s0, sp, {}", f.param_cnt * SLOT)?;
+    writeln!(w, "  add sp, sp, -{}", (f.var_cnt + 2) * SLOT)?;
   for s in &f.stmts {
     match s {
       IrStmt::Ldc(x) => {
@@ -62,14 +65,14 @@ pub fn write_asm(p: &IrProg, w: &mut impl Write) -> Result<()> {
         writeln!(w, "  sd t0, 0(sp)")?;
       }
       IrStmt::Load(id) => {
-        writeln!(w, "  ld t0, {}(s0)", id * SLOT)?;
+          writeln!(w, "  ld t0, -{}(s0)", (id + 1) * SLOT)?;
         writeln!(w, "  sd t0, -8(sp)")?;
         writeln!(w, "  add sp, sp, -8")?;
       }
       IrStmt::Store(id) => {
         writeln!(w, "  ld t0, 0(sp)")?;
         writeln!(w, "  add sp, sp, 8")?;
-        writeln!(w, "  sd t0, {}(s0)", id * SLOT)?;
+          writeln!(w, "  sd t0, -{}(s0)", (id + 1) * SLOT)?;
       }
       IrStmt::Label(x) => writeln!(w, ".L.{}.{}:", f.name, x)?,
       IrStmt::Bz(x) => {
@@ -83,11 +86,19 @@ pub fn write_asm(p: &IrProg, w: &mut impl Write) -> Result<()> {
         writeln!(w, "  bnez t0, .L.{}.{}", f.name, x)?;
       }
       IrStmt::Jump(x) => writeln!(w, "  j .L.{}.{}", f.name, x)?,
+        IrStmt::Call(x) => {
+          writeln!(w, "  jal {}", p.funcs[*x].name)?;
+          writeln!(w, "  sd a0, -8(sp)")?;
+          writeln!(w, "  add sp, sp, -8")?;
+        }
       IrStmt::Pop => writeln!(w, "  add sp, sp, 8")?,
-      IrStmt::Ret => {
-        writeln!(w, "  ld a0, 0(sp)")?;
-        writeln!(w, "  add sp, sp, {}", (f.var_cnt + 1) * SLOT)?;
-        writeln!(w, "  ret")?;
+        IrStmt::Ret => {
+          writeln!(w, "  ld a0, 0(sp)")?;
+          writeln!(w, "  mv sp, s0")?;
+          writeln!(w, "  ld s0, -{}(sp)", (f.param_cnt + f.var_cnt + 1) * SLOT)?;
+          writeln!(w, "  ld ra, -{}(sp)", (f.param_cnt + f.var_cnt + 2) * SLOT)?;
+          writeln!(w, "  jr ra")?;
+        }
       }
     }
   }

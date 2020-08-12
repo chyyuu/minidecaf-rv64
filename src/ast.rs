@@ -1,12 +1,13 @@
 #[derive(Debug, Clone)]
 pub struct Prog {
-  pub func: Func,
+  pub funcs: Vec<Func>,
 }
 
 #[derive(Debug, Clone)]
 pub struct Func {
   pub name: String,
-  pub stmts: Vec<Stmt>,
+  pub params: Vec<String>,
+  pub stmts: Option<Vec<Stmt>>,
 }
 #[derive(Debug, Clone)]
 pub enum Stmt {
@@ -63,4 +64,5 @@ pub enum Expr {
   Var(String),
   Assign(String, Box<Expr>),
   Condition(Box<Expr>, Box<Expr>, Box<Expr>),
+  Call(String, Vec<Expr>),
 }

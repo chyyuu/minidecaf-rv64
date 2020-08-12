@@ -1,13 +1,15 @@
 use crate::ast::*;
-use std::collections::HashMap;
+use std::collections::{hash_map::Entry, HashMap};
 
 pub struct IrProg {
-  pub func: IrFunc,
+  pub funcs: Vec<IrFunc>,
 }
 
 pub struct IrFunc {
   pub name: String,
+  pub param_cnt: usize,
   pub var_cnt: usize,
+  pub is_decl: bool,
   pub stmts: Vec<IrStmt>,
 }
 
@@ -21,26 +23,43 @@ pub enum IrStmt {
   Bz(usize),
   Bnz(usize),
   Jump(usize),
+  Call(usize),
   Pop,
   Ret,
 }
 
 pub fn ast2ir(p: &Prog) -> IrProg {
-  IrProg {
-    func: func(&p.func),
+  let mut func2id = HashMap::new();
+  let mut funcs = Vec::new();
+  for f in &p.funcs {
+    match func2id.entry(f.name.clone()) {
+      Entry::Vacant(v) => {
+        v.insert(funcs.len());
+        funcs.push(func(&func2id, f));
+      }
+      Entry::Occupied(o) => {
+        let old = &mut funcs[*o.get()];
+        if old.is_decl {
+          *old = func(&func2id, f);
+        } else if f.stmts.is_some() {
+          panic!("function `{}` redefined in current context", f.name)
+        }
+      }
+    }
   }
+  IrProg { funcs }
 }
 
-#[derive(Default)]
-struct FuncCtx {
+struct FuncCtx<'a> {
   names: Vec<HashMap<String, usize>>,
   stmts: Vec<IrStmt>,
   loops: Vec<(usize, usize)>,
+  func2id: &'a HashMap<String, usize>,
   var_cnt: usize,
   label_cnt: usize,
 }
 
-impl FuncCtx {
+impl<'a> FuncCtx<'a> {
   fn new_label(&mut self) -> usize {
     (self.label_cnt, self.label_cnt += 1).0
   }
@@ -55,27 +74,40 @@ impl FuncCtx {
   }
 }
 
-fn func(f: &Func) -> IrFunc {
-  let mut ctx = FuncCtx::default();
-  ctx.names.push(HashMap::new());
-  for s in &f.stmts {
-    stmt(&mut ctx, s);
+fn func(func2id: &HashMap<String, usize>, f: &Func) -> IrFunc {
+  let mut ctx = FuncCtx {
+    names: vec![HashMap::new()],
+    stmts: Vec::new(),
+    loops: Vec::new(),
+    func2id,
+    var_cnt: 0,
+    label_cnt: 0,
+  };
+  for p in &f.params {
+    stmt(&mut ctx, &Stmt::Def(p.to_string(), None))
   }
-  match ctx.stmts.last() {
-    Some(IrStmt::Ret) => {}
-    _ => {
-      ctx.stmts.push(IrStmt::Ldc(0));
-      ctx.stmts.push(IrStmt::Ret);
+  if let Some(stmts) = &f.stmts {
+    for s in stmts {
+      stmt(&mut ctx, s);
+    }
+    match ctx.stmts.last() {
+      Some(IrStmt::Ret) => {}
+      _ => {
+        ctx.stmts.push(IrStmt::Ldc(0));
+        ctx.stmts.push(IrStmt::Ret);
+      }
     }
   }
   IrFunc {
     name: f.name.clone(),
-    var_cnt: ctx.var_cnt,
+    param_cnt: f.params.len(),
+    var_cnt: ctx.var_cnt - f.params.len(),
+    is_decl: f.stmts.is_none(),
     stmts: ctx.stmts,
   }
 }
 
-fn block(ctx: &mut FuncCtx, b: &Block) {
+fn block<'a>(ctx: &mut FuncCtx<'a>, b: &Block) {
   ctx.names.push(HashMap::new());
   for s in &b.0 {
     stmt(ctx, s);
@@ -83,7 +115,7 @@ fn block(ctx: &mut FuncCtx, b: &Block) {
   ctx.names.pop();
 }
 
-fn stmt(ctx: &mut FuncCtx, s: &Stmt) {
+fn stmt<'a>(ctx: &mut FuncCtx<'a>, s: &Stmt) {
   match s {
     Stmt::Empty => {}
     Stmt::Ret(e) => {
@@ -181,7 +213,7 @@ fn stmt(ctx: &mut FuncCtx, s: &Stmt) {
   }
 }
 
-fn expr(ctx: &mut FuncCtx, e: &Expr) {
+fn expr<'a>(ctx: &mut FuncCtx<'a>, e: &Expr) {
   match e {
     Expr::Int(x) => ctx.stmts.push(IrStmt::Ldc(*x)),
     Expr::Unary(op, x) => {
@@ -209,6 +241,16 @@ fn expr(ctx: &mut FuncCtx, e: &Expr) {
       ctx.stmts.push(IrStmt::Label(before_f));
       expr(ctx, f);
       ctx.stmts.push(IrStmt::Label(after_f));
+    }
+    Expr::Call(func, args) => {
+      let id = *ctx
+        .func2id
+        .get(func)
+        .expect("function not defined in current context");
+      for a in args {
+        expr(ctx, a);
+      }
+      ctx.stmts.push(IrStmt::Call(id));
     }
   }
 }

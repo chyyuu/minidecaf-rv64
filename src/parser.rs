@@ -352,7 +352,7 @@ impl Parser {
         return Stmt::Empty;
       }
       _ => {
-        self.bad_token(&format!("stmt() FUN: got {:?} --- ", &t.ty));
+        self.bad_token(&format!("stmt(): got {:?} --- ", &t.ty));
       }
     }
   }
@@ -369,18 +369,63 @@ impl Parser {
     }
   }
 
-  //<function> ::= "int" <id> "(" ")" "{" <statements> "}"
+  //<function> ::= "int" <id> "(" [ "int" <id> { "," "int" <id> } ] ")" ( "{" { <block-item> } "}" | ";" )
   fn func(&mut self) -> Func {
     self.expect(TokenType::Int);
     self.expect(TokenType::Ident("main".to_string()));
+    let t = &self.tokens[self.pos].clone();
+    let fname;
+    match &t.ty {
+      TokenType::Ident(name) => {
+        self.pos += 1;
+        fname = name;
+      }
+      _ => {
+        self.bad_token(&format!("func(): got {:?} --- ", &t.ty));
+      }
+    }
+
     self.expect(TokenType::LeftParen);
+
+    let mut params = vec![];
+
+    let nt = &self.tokens[self.pos];
+    if nt.ty != TokenType::RightParen {
+      loop {
+        if self.consume(TokenType::Int) {
+          let idt = self.tokens[self.pos].clone();
+          match &idt.ty {
+            TokenType::Ident(param) => {
+              self.pos += 1;
+              params.push(param.clone());
+            }
+            _ => {
+              self.bad_token(&format!("func(): expect Ident, got {:?} --- ", &t.ty));
+            }
+          }
+          let nt = &self.tokens[self.pos];
+          if nt.ty != TokenType::Comma {
+            break;
+          }
+        }
+      }
+    }
     self.expect(TokenType::RightParen);
-    self.expect(TokenType::LeftBrace);
-    let body = self.stmts();
-    self.expect(TokenType::RightBrace);
+
+    let body;
+    let snt = &self.tokens[self.pos];
+    if snt.ty != TokenType::Semicolon {
+      self.expect(TokenType::LeftBrace);
+      body = Some(self.stmts());
+      self.expect(TokenType::RightBrace);
+    } else {
+      body = None;
+      self.pos += 1;
+    }
 
     Func {
-      name: "main".to_string(),
+      name: fname.clone(),
+      params,
       stmts: body,
     }
   }
@@ -389,7 +434,11 @@ impl Parser {
 
   fn prog(&mut self) {
     // Function
-    self.prog = Some(Prog { func: self.func() });
+    let mut funcs = vec![];
+    while self.tokens.len() > self.pos {
+      funcs.push(self.func());
+    }
+    self.prog = Some(Prog { funcs });
     //   self.prog
   }
 }
