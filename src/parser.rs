@@ -47,9 +47,10 @@ impl Parser {
     true
   }
 
-  //<factor> ::= "(" <exp> ")" | <unary_op> <factor> | <int> | <id>
+  // <function-call> ::= id "(" [ <exp> { "," <exp> } ] ")"
+  // <factor> ::= "(" <exp> ")" | <unary_op> <factor> | <int> | <id> | <function-call>
   fn factor(&mut self) -> Expr {
-    let t = &self.tokens[self.pos];
+    let t = self.tokens[self.pos].clone();
     self.pos += 1;
 
     match &t.ty {
@@ -57,7 +58,33 @@ impl Parser {
       TokenType::BNot => Expr::Unary(UnaryOp::BNot, Box::new(self.factor())),
       TokenType::LNot => Expr::Unary(UnaryOp::LNot, Box::new(self.factor())),
       TokenType::Num(val) => Expr::Int(*val),
-      TokenType::Ident(name) => Expr::Var(name.clone()),
+      TokenType::Ident(name) => {
+        let t = &self.tokens[self.pos];
+        let nn = name;
+        //func-call
+        let mut params = vec![];
+        if t.ty == TokenType::LeftParen {
+          self.pos += 1;
+
+          let nt = &self.tokens[self.pos];
+          if nt.ty != TokenType::RightParen {
+            loop {
+              let e = self.expr();
+              params.push(e);
+              let nt = &self.tokens[self.pos];
+              if nt.ty != TokenType::Comma {
+                break;
+              }
+            }
+            // self.expect(TokenType::RightParen);
+          }
+          self.pos += 1;
+          //let mut nn = name;
+          return Expr::Call(nn.to_string(), params.clone());
+        } else {
+          return Expr::Var(name.clone());
+        }
+      }
       TokenType::LeftParen => {
         let e = self.expr();
         self.expect(TokenType::RightParen);
@@ -426,17 +453,18 @@ impl Parser {
           sts.push(self.stmt());
         }
       }
-    // body = Some(self.stmt());
-    // self.expect(TokenType::RightBrace);
+      Func {
+        name: fname.clone(),
+        params,
+        stmts: Some(Stmt::Block(Block(sts))),
+      }
     } else {
-      // body = None;
       self.pos += 1;
-    }
-
-    Func {
-      name: fname.clone(),
-      params,
-      stmts: Some(Stmt::Block(Block(sts))),
+      Func {
+        name: fname.clone(),
+        params,
+        stmts: None,
+      }
     }
   }
 
