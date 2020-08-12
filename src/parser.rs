@@ -67,7 +67,7 @@ impl Parser {
     }
   }
 
-  //<term> ::= <factor> { ("*" | "/") <factor> }
+  //<term> ::= <factor> { ("*" | "/" | "%") <factor> }
   fn term(&mut self) -> Expr {
     let mut left = self.factor();
     loop {
@@ -75,6 +75,8 @@ impl Parser {
         left = Expr::Binary(BinaryOp::Mul, Box::new(left), Box::new(self.factor()));
       } else if self.consume(TokenType::Div) {
         left = Expr::Binary(BinaryOp::Div, Box::new(left), Box::new(self.factor()));
+      } else if self.consume(TokenType::Mod) {
+        left = Expr::Binary(BinaryOp::Mod, Box::new(left), Box::new(self.factor()));
       } else {
         return left;
       }
@@ -284,13 +286,6 @@ impl Parser {
       }
       TokenType::Do => {
         self.pos += 1;
-        //let nt = &self.tokens[self.pos];
-        //  let mut st = Stmt::Empty;
-        // if nt.ty == TokenType::LeftBrace {
-        //   self.pos += 1;
-        //   st = self.stmt();
-        //   self.expect(TokenType::RightBrace);
-        // }
         let st = self.stmt();
 
         self.expect(TokenType::While);
@@ -314,7 +309,6 @@ impl Parser {
         self.pos += 1;
         self.expect(TokenType::LeftParen);
 
-        //self.pos += 1;
         let init_st;
         let init_t = &self.tokens[self.pos];
         if init_t.ty != TokenType::Semicolon {
@@ -324,21 +318,19 @@ impl Parser {
           init_st = None;
         }
 
-        //self.pos += 1;
         let cond_e;
         let cond_t = &self.tokens[self.pos];
         if cond_t.ty != TokenType::Semicolon {
           cond_e = Some(self.expr());
+          self.expect(TokenType::Semicolon);
         } else {
           self.pos += 1;
           cond_e = None;
         }
 
-        //self.pos += 1;
         let step_e;
         let step_t = &self.tokens[self.pos];
         if step_t.ty != TokenType::RightParen {
-          self.pos += 1;
           step_e = Some(self.expr());
           self.expect(TokenType::RightParen);
         } else {
