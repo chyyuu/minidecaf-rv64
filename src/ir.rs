@@ -19,6 +19,7 @@ pub enum IrStmt {
   Store(usize),
   Label(usize),
   Bz(usize),
+  Bnz(usize),
   Jump(usize),
   Pop,
   Ret,
@@ -34,6 +35,7 @@ pub fn ast2ir(p: &Prog) -> IrProg {
 struct FuncCtx {
   names: Vec<HashMap<String, usize>>,
   stmts: Vec<IrStmt>,
+  loops: Vec<(usize, usize)>,
   var_cnt: usize,
   label_cnt: usize,
 }
@@ -83,6 +85,7 @@ fn block(ctx: &mut FuncCtx, b: &Block) {
 
 fn stmt(ctx: &mut FuncCtx, s: &Stmt) {
   match s {
+    Stmt::Empty => {}
     Stmt::Ret(e) => {
       expr(ctx, e);
       ctx.stmts.push(IrStmt::Ret);
@@ -120,6 +123,61 @@ fn stmt(ctx: &mut FuncCtx, s: &Stmt) {
       ctx.stmts.push(IrStmt::Label(after_f));
     }
     Stmt::Block(b) => block(ctx, b),
+    Stmt::While(cond, body) => {
+      let (before_cond, after_body) = (ctx.new_label(), ctx.new_label());
+      ctx.loops.push((after_body, before_cond));
+      ctx.stmts.push(IrStmt::Label(before_cond));
+      expr(ctx, cond);
+      ctx.stmts.push(IrStmt::Bz(after_body));
+      stmt(ctx, body);
+      ctx.stmts.push(IrStmt::Jump(before_cond));
+      ctx.stmts.push(IrStmt::Label(after_body));
+      ctx.loops.pop();
+    }
+    Stmt::DoWhile(body, cond) => {
+      let (before_body, before_cond, after_cond) =
+        (ctx.new_label(), ctx.new_label(), ctx.new_label());
+      ctx.loops.push((after_cond, before_cond));
+      ctx.stmts.push(IrStmt::Label(before_body));
+      stmt(ctx, body);
+      ctx.stmts.push(IrStmt::Label(before_cond));
+      expr(ctx, cond);
+      ctx.stmts.push(IrStmt::Bnz(before_body));
+      ctx.stmts.push(IrStmt::Label(after_cond));
+      ctx.loops.pop();
+    }
+    Stmt::For {
+      init,
+      cond,
+      update,
+      body,
+    } => {
+      ctx.names.push(HashMap::new());
+      if let Some(init) = init {
+        stmt(ctx, init);
+      }
+      let (before_cond, before_update, after_body) =
+        (ctx.new_label(), ctx.new_label(), ctx.new_label());
+      ctx.loops.push((after_body, before_update));
+      ctx.stmts.push(IrStmt::Label(before_cond));
+      expr(ctx, cond.as_ref().unwrap_or(&Expr::Int(1)));
+      ctx.stmts.push(IrStmt::Bz(after_body));
+      stmt(ctx, body);
+      ctx.stmts.push(IrStmt::Label(before_update));
+      if let Some(update) = update {
+        expr(ctx, update);
+      }
+      ctx.stmts.push(IrStmt::Jump(before_cond));
+      ctx.stmts.push(IrStmt::Label(after_body));
+      ctx.loops.pop();
+      ctx.names.pop();
+    }
+    Stmt::Break => ctx
+      .stmts
+      .push(IrStmt::Jump(ctx.loops.last().expect("break out of loop").0)),
+    Stmt::Continue => ctx.stmts.push(IrStmt::Jump(
+      ctx.loops.last().expect("continue out of loop").1,
+    )),
   }
 }
 

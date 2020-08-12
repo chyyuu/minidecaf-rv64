@@ -35,6 +35,12 @@ pub enum TokenType {
     Else,          // "else"
     Question,      // "?"
     Colon,         // ":"
+    Mod,           // "%"
+    While,         // "while"
+    For,           // "for"
+    Do,            // "do"
+    Break,         // "break"
+    Continue,      // "continue"
 }
 
 // Character Kind
@@ -68,6 +74,7 @@ impl TokenType {
             '>' => Some(Gt),
             '?' => Some(Question),
             ':' => Some(Colon),
+            '%' => Some(Mod),
             _ => None,
         }
     }
@@ -113,6 +120,11 @@ fn keyword_map() -> HashMap<String, TokenType> {
     map.insert("return".into(), TokenType::Return);
     map.insert("if".into(), TokenType::If);
     map.insert("else".into(), TokenType::Else);
+    map.insert("while".into(), TokenType::While);
+    map.insert("for".into(), TokenType::For);
+    map.insert("do".into(), TokenType::Do);
+    map.insert("break".into(), TokenType::Break);
+    map.insert("continue".into(), TokenType::Continue);
     map
 }
 

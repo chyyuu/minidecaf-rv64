@@ -30,6 +30,7 @@ pub fn write_asm(p: &IrProg, w: &mut impl Write) -> Result<()> {
           Sub => writeln!(w, "  sub t0, t1, t0")?,
           Mul => writeln!(w, "  mul t0, t1, t0")?,
           Div => writeln!(w, "  div t0, t1, t0")?,
+          Mod => writeln!(w, "  rem t0, t1, t0")?,
           Lt => writeln!(w, "  slt t0, t1, t0")?,
           Le => {
             writeln!(w, "  slt t0, t0, t1")?;
@@ -75,6 +76,11 @@ pub fn write_asm(p: &IrProg, w: &mut impl Write) -> Result<()> {
         writeln!(w, "  ld t0, 0(sp)")?;
         writeln!(w, "  add sp, sp, 8")?;
         writeln!(w, "  beqz t0, .L.{}.{}", f.name, x)?;
+      }
+      IrStmt::Bnz(x) => {
+        writeln!(w, "  ld t0, 0(sp)")?;
+        writeln!(w, "  add sp, sp, 8")?;
+        writeln!(w, "  bnez t0, .L.{}.{}", f.name, x)?;
       }
       IrStmt::Jump(x) => writeln!(w, "  j .L.{}.{}", f.name, x)?,
       IrStmt::Pop => writeln!(w, "  add sp, sp, 8")?,

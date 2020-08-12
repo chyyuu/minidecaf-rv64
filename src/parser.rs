@@ -207,6 +207,7 @@ impl Parser {
   // | "int" <id> [ = <exp> ] ";"
   // | "if" "(" <exp> ")" <statement> [ "else" <statement> ]
   // | "{" statements  "}"
+  // | "while" "(" <exp> ")"  <statement>
   fn stmt(&mut self) -> Stmt {
     let t = &self.tokens[self.pos];
     match t.ty {
@@ -267,6 +268,14 @@ impl Parser {
           }
         }
         return Stmt::Block(Block(sts));
+      }
+      TokenType::While => {
+        self.pos += 1;
+        self.expect(TokenType::LeftParen);
+        let e = self.expr();
+        self.expect(TokenType::RightParen);
+        let st = self.stmt();
+        return Stmt::While(e, Box::new(st));
       }
       _ => {
         self.bad_token(&format!("stmt() FUN: got {:?} --- ", &t.ty));

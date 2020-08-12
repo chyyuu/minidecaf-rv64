@@ -10,11 +10,22 @@ pub struct Func {
 }
 #[derive(Debug, Clone)]
 pub enum Stmt {
+  Empty,
   Ret(Expr),
   Def(String, Option<Expr>),
   Expr(Expr),
   If(Expr, Box<Stmt>, Option<Box<Stmt>>),
   Block(Block),
+  While(Expr, Box<Stmt>),
+  DoWhile(Box<Stmt>, Expr),
+  For {
+    init: Option<Box<Stmt>>,
+    cond: Option<Expr>,
+    update: Option<Expr>,
+    body: Box<Stmt>,
+  },
+  Continue,
+  Break,
 }
 
 #[derive(Debug, Clone)]
@@ -41,6 +52,7 @@ pub enum BinaryOp {
   Ne,
   And,
   Or,
+  Mod,
 }
 
 #[derive(Debug, Clone)]
