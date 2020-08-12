@@ -211,6 +211,7 @@ impl Parser {
   // | "do" <statement> "while" ";"
   // | "break" ";"
   // | "continue" ";"
+  // | "for" "(" [ <exp> ] ";" [ <exp> ] ";" [ <exp> ] ")" <statement>
   fn stmt(&mut self) -> Stmt {
     let t = &self.tokens[self.pos];
     match t.ty {
@@ -307,6 +308,51 @@ impl Parser {
         self.pos += 1;
         self.expect(TokenType::Semicolon);
         return Stmt::Continue;
+      }
+      TokenType::For => {
+        self.pos += 1;
+        self.expect(TokenType::LeftParen);
+
+        //self.pos += 1;
+        let init_st;
+        let init_t = &self.tokens[self.pos];
+        if init_t.ty != TokenType::Semicolon {
+          init_st = Some(Box::new(self.stmt()));
+        } else {
+          self.pos += 1;
+          init_st = None;
+        }
+
+        //self.pos += 1;
+        let cond_e;
+        let cond_t = &self.tokens[self.pos];
+        if cond_t.ty != TokenType::Semicolon {
+          cond_e = Some(self.expr());
+        } else {
+          self.pos += 1;
+          cond_e = None;
+        }
+
+        //self.pos += 1;
+        let step_e;
+        let step_t = &self.tokens[self.pos];
+        if step_t.ty != TokenType::RightParen {
+          self.pos += 1;
+          step_e = Some(self.expr());
+          self.expect(TokenType::RightParen);
+        } else {
+          self.pos += 1;
+          step_e = None;
+        }
+
+        let body_st = self.stmt();
+
+        return Stmt::For {
+          init: init_st,
+          cond: cond_e,
+          update: step_e,
+          body: Box::new(body_st),
+        };
       }
       _ => {
         self.bad_token(&format!("stmt() FUN: got {:?} --- ", &t.ty));
