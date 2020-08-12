@@ -208,6 +208,7 @@ impl Parser {
   // | "if" "(" <exp> ")" <statement> [ "else" <statement> ]
   // | "{" statements  "}"
   // | "while" "(" <exp> ")"  <statement>
+  // | "do" <statement> "while" ";"
   fn stmt(&mut self) -> Stmt {
     let t = &self.tokens[self.pos];
     match t.ty {
@@ -276,6 +277,24 @@ impl Parser {
         self.expect(TokenType::RightParen);
         let st = self.stmt();
         return Stmt::While(e, Box::new(st));
+      }
+      TokenType::Do => {
+        self.pos += 1;
+        //let nt = &self.tokens[self.pos];
+        //let mut st = Stmt::Empty;
+        // if nt.ty == TokenType::LeftBrace {
+        //   self.pos += 1;
+        //   st = self.stmt();
+        //   self.expect(TokenType::RightBrace);
+        // }
+        let st = self.stmt();
+
+        self.expect(TokenType::While);
+        self.expect(TokenType::LeftParen);
+        let e = self.expr();
+        self.expect(TokenType::RightParen);
+        self.expect(TokenType::Semicolon);
+        return Stmt::DoWhile(Box::new(st), e);
       }
       _ => {
         self.bad_token(&format!("stmt() FUN: got {:?} --- ", &t.ty));
