@@ -212,6 +212,7 @@ impl Parser {
   // | "break" ";"
   // | "continue" ";"
   // | "for" "(" [ <exp> ] ";" [ <exp> ] ";" [ <exp> ] ")" <statement>
+  // | ";"
   fn stmt(&mut self) -> Stmt {
     let t = &self.tokens[self.pos];
     match t.ty {
@@ -353,6 +354,10 @@ impl Parser {
           update: step_e,
           body: Box::new(body_st),
         };
+      }
+      TokenType::Semicolon => {
+        self.pos += 1;
+        return Stmt::Empty;
       }
       _ => {
         self.bad_token(&format!("stmt() FUN: got {:?} --- ", &t.ty));
