@@ -485,17 +485,19 @@ impl Parser {
           if n.ty == TokenType::Semicolon {
             self.pos += 1;
             globs.push((name.clone(), None));
+            continue;
           }
           self.expect(TokenType::Assign);
           let nid = &self.tokens[self.pos];
           if let TokenType::Num(num) = nid.ty {
+            self.pos += 1;
             self.expect(TokenType::Semicolon);
             globs.push((name.clone(), Some(num)));
           } else {
             self.bad_token(&format!("func(): expect Num, got {:?} --- ", &nid.ty));
           }
         } else {
-          self.bad_token("Ident expected");
+          self.bad_token("toplevel(): Ident expected");
         }
       }
     } //while
